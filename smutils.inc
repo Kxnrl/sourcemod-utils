@@ -3,8 +3,8 @@
 /*                         Sourcemod UTILs                        */
 /*                                                                */
 /*                                                                */
-/*  File:          Kstock.inc                                     */
-/*  Description:   Some helpful functions.                        */
+/*  File:          smutils.inc                                    */
+/*  Description:   Some helpful functions. -> go fuck sasusi.     */
 /*                                                                */
 /*                                                                */
 /*  Copyright (C) 2018  Kyle   https://kxnrl.com                  */
@@ -36,13 +36,13 @@ stock bool ClientIsKyle(int client)
     return (GetSteamAccountID(client) == 88166525);
 }
 
-stock bool GetKyleIndex()
+stock int GetKyleIndex()
 {
     for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
             if(GetSteamAccountID(client) == 88166525)
                 return client;
-            
+
     return -1;
 }
 
@@ -66,12 +66,12 @@ stock bool ClientIsAlive(int client, bool bot = false)
     return (ClientIsValid(client, bot) && IsPlayerAlive(client));
 }
 
-stock bool FindClientBySteamId(AuthIdType authType, const char[] authId, bool validate = false)
+stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool validate = false)
 {
     char steamId[32];
     for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
-            if(GetClientAuthId(client, authType, steamid, 32, validate))
+            if(GetClientAuthId(client, authType, steamId, 32, validate))
                 if(strcmp(steamId, authId) == 0)
                     return client;
 
@@ -152,7 +152,6 @@ static char ChatPrefix[32] = "[\x04SM\x01]";
 static char ChatSpaces[32] = "   ";
 static bool ChatConSnd     = true;
 static bool StopNextChatCS = false;
-static bool UserM
 
 stock int SMUtils_SetChatPrefix(const char[] prefix)
 {
@@ -270,7 +269,7 @@ stock void tChatAll(const char[] buffer, any ...)
 
             ProcessColorString(msg, 256);
 
-            Protobuf SayText2 = view_as<Protobuf>(StartMessageOne(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+            Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
             if(SayText2 == null)
             {
                 LogError("StartMessageOne -> SayText2 is null");
@@ -294,21 +293,21 @@ stock void tChatAll(const char[] buffer, any ...)
 stock void ProcessColorString(char[] message, int maxLen)
 {
     ReplaceString(message, maxLen, "{normal}",      "\x01", false);
-	ReplaceString(message, maxLen, "{default}",     "\x01", false);
-	ReplaceString(message, maxLen, "{white}",       "\x01", false);
-	ReplaceString(message, maxLen, "{darkred}",     "\x02", false);
-	ReplaceString(message, maxLen, "{pink}",        "\x03", false);
-	ReplaceString(message, maxLen, "{green}",       "\x04", false);
-	ReplaceString(message, maxLen, "{lime}",        "\x05", false);
-	ReplaceString(message, maxLen, "{yellow}",      "\x05", false);
-	ReplaceString(message, maxLen, "{lightgreen}",  "\x06", false);
-	ReplaceString(message, maxLen, "{lightred}",    "\x07", false);
-	ReplaceString(message, maxLen, "{red}",         "\x07", false);
-	ReplaceString(message, maxLen, "{gray}",        "\x08", false);
-	ReplaceString(message, maxLen, "{grey}",        "\x08", false);
-	ReplaceString(message, maxLen, "{olive}",       "\x09", false);
-	ReplaceString(message, maxLen, "{orange}",      "\x10", false);
-	ReplaceString(message, maxLen, "{silver}",      "\x0A", false);
+    ReplaceString(message, maxLen, "{default}",     "\x01", false);
+    ReplaceString(message, maxLen, "{white}",       "\x01", false);
+    ReplaceString(message, maxLen, "{darkred}",     "\x02", false);
+    ReplaceString(message, maxLen, "{pink}",        "\x03", false);
+    ReplaceString(message, maxLen, "{green}",       "\x04", false);
+    ReplaceString(message, maxLen, "{lime}",        "\x05", false);
+    ReplaceString(message, maxLen, "{yellow}",      "\x05", false);
+    ReplaceString(message, maxLen, "{lightgreen}",  "\x06", false);
+    ReplaceString(message, maxLen, "{lightred}",    "\x07", false);
+    ReplaceString(message, maxLen, "{red}",         "\x07", false);
+    ReplaceString(message, maxLen, "{gray}",        "\x08", false);
+    ReplaceString(message, maxLen, "{grey}",        "\x08", false);
+    ReplaceString(message, maxLen, "{olive}",       "\x09", false);
+    ReplaceString(message, maxLen, "{orange}",      "\x10", false);
+    ReplaceString(message, maxLen, "{silver}",      "\x0A", false);
     ReplaceString(message, maxLen, "{lightblue}",   "\x0B", false);
     ReplaceString(message, maxLen, "{blue}",        "\x0C", false);
     ReplaceString(message, maxLen, "{purple}",      "\x0E", false);
@@ -361,7 +360,7 @@ stock void tHintAll(const char[] buffer, any ...)
     for(int client = 1; client <= MaxClients; ++client)
         if(ClientIsValid(client))
         {
-            Protobuf HintText = view_as<Protobuf>(StartMessageOne(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+            Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
             if(HintText == null)
             {
                 LogError("StartMessageOne -> HintText is null");
@@ -388,11 +387,11 @@ stock void tHintAll(const char[] buffer, any ...)
 #define HUD_PRINTCONSOLE  2 
 #define HUD_PRINTTALK     3 
 #define HUD_PRINTCENTER   4 
-static int TextDest = HUD_PRINTCENTER;
+static int TextMsgDest = HUD_PRINTCENTER;
 
 stock void SMUtils_SetTextDest(int val)
 {
-    TextDest = val;
+    TextMsgDest = val;
 }
 
 stock void Text(int client, const char[] buffer, any ...)
@@ -409,7 +408,7 @@ stock void Text(int client, const char[] buffer, any ...)
     char msg[256];
     VFormat(msg, 256, buffer, 3);
 
-    TextMsg.PbSetInt("msg_dst", TextMsgDest); 
+    TextMsg.SetInt("msg_dst", TextMsgDest); 
     TextMsg.AddString("params", msg);
     TextMsg.AddString("params", "");
     TextMsg.AddString("params", "");
@@ -433,7 +432,7 @@ stock void TextAll(const char[] buffer, any ...)
     char msg[256];
     VFormat(msg, 256, buffer, 3);
 
-    TextMsg.PbSetInt("msg_dst", TextMsgDest); 
+    TextMsg.SetInt("msg_dst", TextMsgDest); 
     TextMsg.AddString("params", msg);
     TextMsg.AddString("params", "");
     TextMsg.AddString("params", "");
@@ -449,7 +448,7 @@ stock void tTextAll(const char[] buffer, any ...)
     for(int client = 1; client <= MaxClients; ++client)
         if(ClientIsValid(client))
         {
-            Protobuf TextMsg = view_as<Protobuf>(StartMessageOne(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+            Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
             if(TextMsg == null)
             {
                 LogError("StartMessageOne -> TextMsg is null");
@@ -460,7 +459,7 @@ stock void tTextAll(const char[] buffer, any ...)
 
             VFormat(msg, 256, buffer, 3);
 
-            TextMsg.PbSetInt("msg_dst", TextMsgDest); 
+            TextMsg.SetInt("msg_dst", TextMsgDest); 
             TextMsg.AddString("params", msg);
             TextMsg.AddString("params", "");
             TextMsg.AddString("params", "");
@@ -477,36 +476,41 @@ stock void tTextAll(const char[] buffer, any ...)
 /**************************
         MissionHint
 **************************/
+#include <sdktools_functions>
+#include <sdktools_entinput>
+
 enum MissionHint_Icon
 {
-    Icon_tip = 0,
-    Icon_info,
-    Icon_shield,
+    Icon_bulb = 0,
+    Icon_caution,
     Icon_alert,
     Icon_alert_red,
-    Icon_tip_again,
+    Icon_tip,
     Icon_skull,
     Icon_no,
-    Icon_icon_interact,
+    Icon_run,
+    Icon_interact,
     Icon_button,
     Icon_door,
     Icon_arrow_plain,
     Icon_arrow_plain_white_dn,
     Icon_arrow_plain_white_up,
     Icon_arrow_up,
-    Icon_arrow_right
+    Icon_arrow_right,
+    Icon_fire,
+    Icon_present
 };
 
 static char MissionHint_Icon_String[MissionHint_Icon][32] =
 {
-    "icon_tip",
-    "icon_info",
-    "icon_shield",
+    "icon_bulb",
+    "icon_caution",
     "icon_alert",
     "icon_alert_red",
-    "icon_tip (again)",
+    "icon_tip",
     "icon_skull",
     "icon_no",
+    "icon_run",
     "icon_interact",
     "icon_button",
     "icon_door",
@@ -514,129 +518,185 @@ static char MissionHint_Icon_String[MissionHint_Icon][32] =
     "icon_arrow_plain_white_dn",
     "icon_arrow_plain_white_up",
     "icon_arrow_up",
-    "icon_arrow_right"
+    "icon_arrow_right",
+    "icon_fire",
+    "icon_present"
+};
+
+enum InstructorHud
+{
+    Invalid_Hud = -1
 };
 
 //https://developer.valvesoftware.com/wiki/Env_instructor_hint
-
-static char  MissionHint_Targetname[128]  = "mission_hint_entity";
-static char  MissionHint_TargetEntity[64] = "";
-static bool  MissionHint_Positioning      = false;
-static bool  MissionHint_AllowInvisible   = true;
-static int   MissionHint_Color[3]         = {0, 255, 0};
-static bool  MissionHint_ForceCaption     = true;
-static bool  MissionHint_OnScreenIcon     = true;
-static bool  MissionHint_OffScreenIcon    = true;
-static bool  MissionHint_ShowOffScreen    = false;
-static float MissionHint_IconHeightOffset = 5.0;
-static int   MissionHint_SizePulsing      = 0;
-static int   MissionHint_AlphaPulsing     = 0;
-static int   MissionHint_Shaking          = 0;
-static float MissionHint_DisplayRange     = 9999.99;
-static bool  MissionHint_ShowOnFirstSight = true;
-static int   MissionHint_DisplayLimit     = 0;
-static bool  MissionHint_MovingSuppress   = false;
-
-Cdaption, timeout
-stock int SMUtils_SetMissionHint_Targetname(const char[] buffer, any ...)
+methodmap InstructorHud __nullable__
 {
-    return VFormat(MissionHint_Targetname, 128, buffer, 2);
-}
-
-stock int SMUtils_SetMissionHint_TargetEntity(const char[] buffer, any ...)
-{
-    return VFormat(MissionHint_TargetEntity, 64, buffer, 2);
-}
-
-stock void SMUtils_SetMissionHint_Positioning(bool val)
-{
-    MissionHint_Positioning = val;
-}
-
-stock void SMUtils_SetMissionHint_AllowInvisible(bool val)
-{
-    MissionHint_AllowInvisible = val;
-}
-
-stock void SMUtils_SetMissionHint_Color(int r, int g, int b)
-{
-    MissionHint_Color[0] = r;
-    MissionHint_Color[1] = g;
-    MissionHint_Color[2] = b;
-}
-
-stock void SMUtils_SetMissionHint_ForceCaption(bool val)
-{
-    MissionHint_ForceCaption = val;
-}
-
-stock void SMUtils_SetMissionHint_OnScreenIcon(bool val)
-{
-    MissionHint_OnScreenIcon = val;
-}
-
-stock void SMUtils_SetMissionHint_OffScreenIcon(bool val)
-{
-    MissionHint_OffScreenIcon = val;
-}
-stock void SMUtils_SetMissionHint_ShowOffScreen(bool val)
-{
-    MissionHint_ShowOffScreen = val;
-}
-
-stock void SMUtils_SetMissionHint_IconHeightOffset(float dist)
-{
-    MissionHint_IconHeightOffset = dist;
-}
-
-stock void SMUtils_SetMissionHint_SizePulsing(int val)
-{
-    MissionHint_SizePulsing = val;
-}
-
-stock void SMUtils_SetMissionHint_AlphaPulsing(int val)
-{
-    MissionHint_AlphaPulsing = val;
-}
-
-stock void SMUtils_SetMissionHint_Shaking(int val)
-{
-    MissionHint_Shaking = val;
-}
-
-stock void SMUtils_SetMissionHint_DisplayRange(float val)
-{
-    MissionHint_DisplayRange = val;
-}
-
-stock void SMUtils_SetMissionHint_ShowOnFirstSight(bool val)
-{
-    MissionHint_ShowOnFirstSight = val;
-}
-
-stock void SMUtils_SetMissionHint_DisplayLimit(int val)
-{
-    MissionHint_DisplayLimit = val;
-}
-
-stock void SMUtils_SetMissionHint_MovingSuppress(bool val)
-{
-    MissionHint_MovingSuppress = val;
-}
-
-stock void DisplayMissionHintAll(const char[] caption, float timeout)
-{
-    int entity = CreateEntityByName("env_instructor_hint");
-    if(entity == -1)
+    property int entity
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "MissionHint_Immed -> env_instructor_hint is not valid entity.");
-        return;
+        public get(){ return view_as<int>(this); }
+    }
+
+    public InstructorHud(const char[] targetname)
+    {
+        int entity = CreateEntityByName ("env_instructor_hint");
+        if(entity <= MaxClients)
+            ThrowNativeError(SP_ERROR_ABORTED, "Create env_instructor_hint failed -> entity is invalid.");
+
+        if(targetname[0])
+            DispatchKeyValue(entity, "targetname", targetname);
+        else
+        {
+            char buffer[32];
+            FormatEx(buffer, 32, "env_instructor_hint_%d", entity);
+            DispatchKeyValue(entity, "targetname", buffer);
+        }
+        
+        DispatchSpawn(entity);
+
+        return view_as<InstructorHud>(entity);
     }
     
+    public bool EnforceValue(const char[] key, const char[] val)
+    {
+        return DispatchKeyValue(this.entity, key, val);
+    }
     
+    public bool EnforceFloat(const char[] key, const float val)
+    {
+        return DispatchKeyValueFloat(this.entity, key, val);
+    }
+    
+    public void Destroy(float delay = 0.0)
+    {
+        if(delay < 0.0)
+        {
+            AcceptEntityInput(this.entity, "kill");
+            return;
+        }
+
+        CreateTimer(delay, Timer_DestroyEntity, EntIndexToEntRef(this.entity), TIMER_FLAG_NO_MAPCHANGE);
+    }
+    
+    public void Display(int client, const char[] buffer, any ...)
+    {
+        char caption[256];
+        VFormat(caption, 256, buffer, 3);
+        this.EnforceValue("hint_caption", caption);
+        AcceptEntityInput(this.entity, "Display", client, this.entity);
+    }
+    
+    public void DisplayAll(const char[] buffer, any ...)
+    {
+        char caption[256];
+        VFormat(caption, 256, buffer, 2);
+        this.EnforceValue("hint_caption", caption);
+        AcceptEntityInput(this.entity, "Display");
+    }
+    
+    public void tDisplay(int client, const char[] buffer, any ...)
+    {
+        SetGlobalTransTarget(client);
+        char caption[256];
+        VFormat(caption, 256, buffer, 3);
+        this.EnforceValue("hint_caption", caption);
+        AcceptEntityInput(this.entity, "Display", client, this.entity);
+        SetGlobalTransTarget(LANG_SERVER);
+    }
+    
+    public void tDisplayAll(const char[] buffer, any ...)
+    {
+        char caption[256];
+        for(int client = 1; client <= MaxClients; ++client)
+            if(ClientIsValid(client))
+            {
+                SetGlobalTransTarget(client);
+                VFormat(caption, 256, buffer, 2);
+                this.EnforceValue("hint_caption", caption);
+                AcceptEntityInput(this.entity, "Display", client, this.entity);
+            }
+        SetGlobalTransTarget(LANG_SERVER);
+    }
+
+    public bool TargetEntity(const char[] targetname)
+    {
+        return this.EnforceValue("hint_target", targetname);
+    }
+    
+    public bool CaptionColor(int r, int g, int b)
+    {
+        char color[32];
+        FormatEx(color, 32, "%d %d %d", r, g, b);
+        return this.EnforceValue("hint_color", color);
+    }
+    
+    public bool Positioning(bool positioning) // 0 = follow, 1 = hold on hud
+    {
+        return this.EnforceValue("hint_static", positioning ? "1" : "0");
+    }
+
+    public bool AllowInvisible(bool allow) // 0 = end immed on nodraw, 1 = yes
+    {
+        return this.EnforceValue("hint_allow_nodraw_target", allow ? "1" : "0");
+    }
+    
+    public bool ForceCaption(bool show) // 0 = no, 1 = show when occluded
+    {
+        return this.EnforceValue("hint_forcecaption", show ? "1" : "0");
+    }
+    
+    public bool OnscreenIcon(MissionHint_Icon icon)
+    {
+        return this.EnforceValue("hint_icon_onscreen", MissionHint_Icon_String[icon]);
+    }
+    
+    public bool OffscreenIcon(MissionHint_Icon icon)
+    {
+        return this.EnforceValue("hint_icon_offscreen", MissionHint_Icon_String[icon]);
+    }
+    
+    public bool ShowOffscreen(bool show)
+    {
+        return this.EnforceValue("hint_nooffscreen", show ? "0" : "1");
+    }
+
+    public bool DisplayRange(float range)
+    {
+        return this.EnforceFloat("hint_range", range);
+    }
+    
+    public bool TimeOut(float time)
+    {
+        return this.EnforceFloat("hint_timeout", time);
+    }
+    
+    public bool IconHeight(float height)
+    {
+        return this.EnforceFloat("hint_icon_offset", height);
+    }
+    
+    public bool SizePulsing(int val)
+    {
+        char buffer[16];
+        IntToString(val, buffer, 16);
+        return this.EnforceValue("hint_pulseoption", buffer);
+    }
+    
+    public bool AlphaPulsing(int val)
+    {
+        char buffer[16];
+        IntToString(val, buffer, 16);
+        return this.EnforceValue("hint_alphaoption", buffer);
+    }
+    
+    public bool Shaking(int val) // 0 = no, 1 = Narrow, 2 = Wide
+    {
+        char buffer[16];
+        IntToString(val, buffer, 16);
+        return this.EnforceValue("hint_shakeoption", buffer);
+    }
 }
 
-stock void MissionHint_Immed(const char[] caption, const char[] color, const char[] icon)
+stock void EzMissionHint(const char[] caption, const char[] color, const char[] icon)
 {
     int entity = CreateEntityByName("env_instructor_hint");
     if(entity == -1)
@@ -654,7 +714,6 @@ stock void MissionHint_Immed(const char[] caption, const char[] color, const cha
     DispatchSpawn(entity);
 
     AcceptEntityInput(entity, "ShowHint");
-
     AcceptEntityInput(entity, "kill");
 }
 
@@ -679,3 +738,14 @@ stock void StopTimer(Handle &timer)
 	}
 }
 
+public Action Timer_DestroyEntity(Handle timer, int entRef)
+{
+    int entity = EntRefToEntIndex(entRef);
+    if(IsValidEntity(entity))
+    {
+        if(!AcceptEntityInput(entity, "Kill"))
+            LogError("can not kill entity %d", entity);
+    }
+
+    return Plugin_Stop;
+}
