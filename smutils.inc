@@ -568,21 +568,15 @@ methodmap InstructorHud __nullable__
     
     public void Destroy(float delay = 0.0)
     {
-        if(delay < 0.0)
-        {
-            AcceptEntityInput(this.entity, "kill");
-            return;
-        }
-
-        CreateTimer(delay, Timer_DestroyEntity, EntIndexToEntRef(this.entity), TIMER_FLAG_NO_MAPCHANGE);
+        RemoveEdictEx(this.entity, delay);
     }
-    
+
     public void Display(int client, const char[] buffer, any ...)
     {
         char caption[256];
         VFormat(caption, 256, buffer, 3);
         this.EnforceValue("hint_caption", caption);
-        AcceptEntityInput(this.entity, "Display", client, this.entity);
+        AcceptEntityInput(this.entity, "ShowHint", client, this.entity);
     }
     
     public void DisplayAll(const char[] buffer, any ...)
@@ -590,7 +584,7 @@ methodmap InstructorHud __nullable__
         char caption[256];
         VFormat(caption, 256, buffer, 2);
         this.EnforceValue("hint_caption", caption);
-        AcceptEntityInput(this.entity, "Display");
+        AcceptEntityInput(this.entity, "ShowHint");
     }
     
     public void tDisplay(int client, const char[] buffer, any ...)
@@ -599,7 +593,7 @@ methodmap InstructorHud __nullable__
         char caption[256];
         VFormat(caption, 256, buffer, 3);
         this.EnforceValue("hint_caption", caption);
-        AcceptEntityInput(this.entity, "Display", client, this.entity);
+        AcceptEntityInput(this.entity, "ShowHint", client, this.entity);
         SetGlobalTransTarget(LANG_SERVER);
     }
     
@@ -612,7 +606,7 @@ methodmap InstructorHud __nullable__
                 SetGlobalTransTarget(client);
                 VFormat(caption, 256, buffer, 2);
                 this.EnforceValue("hint_caption", caption);
-                AcceptEntityInput(this.entity, "Display", client, this.entity);
+                AcceptEntityInput(this.entity, "ShowHint", client, this.entity);
             }
         SetGlobalTransTarget(LANG_SERVER);
     }
@@ -694,28 +688,44 @@ methodmap InstructorHud __nullable__
         IntToString(val, buffer, 16);
         return this.EnforceValue("hint_shakeoption", buffer);
     }
-}
 
-stock void EzMissionHint(const char[] caption, const char[] color, const char[] icon)
-{
-    int entity = CreateEntityByName("env_instructor_hint");
-    if(entity == -1)
+    public void EasyInit()
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "MissionHint_Immed -> env_instructor_hint is not valid entity.");
-        return;
+        this.CaptionColor(57, 197, 187);
+        this.Positioning(false);
+        this.AllowInvisible(true);
+        this.ForceCaption(true);
+        this.ShowOffscreen(true);
+        this.DisplayRange(1000.0);
+        this.IconHeight(1.0);
+        this.SizePulsing(0);
+        this.AlphaPulsing(0);
+        this.Shaking(0);
     }
-
-    DispatchKeyValue(entity, "hint_range", "999999");
-    DispatchKeyValue(entity, "hint_color", color);
-    DispatchKeyValue(entity, "hint_caption", caption);
-    DispatchKeyValue(entity, "hint_icon_onscreen", icon);
-    DispatchKeyValue(entity, "hint_timeout", "5.0");
-
-    DispatchSpawn(entity);
-
-    AcceptEntityInput(entity, "ShowHint");
-    AcceptEntityInput(entity, "kill");
 }
+
+stock void EasyMissionHint(int client, const char[] caption, float holdtime, MissionHint_Icon icon, int r, int g, int b)
+{
+    InstructorHud hint = new InstructorHud("");
+    hint.EasyInit();
+    hint.CaptionColor(r, g, b);
+    hint.TimeOut(holdtime);
+    hint.OnscreenIcon(icon);
+    hint.Display(client, caption);
+    hint.Destroy();
+}
+
+stock void EasyMissionHintAll(const char[] caption, float holdtime, MissionHint_Icon icon, int r, int g, int b)
+{
+    InstructorHud hint = new InstructorHud("");
+    hint.EasyInit();
+    hint.CaptionColor(r, g, b);
+    hint.TimeOut(holdtime);
+    hint.OnscreenIcon(icon);
+    hint.DisplayAll(caption);
+    hint.Destroy();
+}
+
 
 /**************************
             Misc
@@ -738,6 +748,35 @@ stock void StopTimer(Handle &timer)
 	}
 }
 
+stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
+{
+    if(!IsValidEntity(entity))
+        return;
+
+    if(delay < 0.0)
+    {
+        AcceptEntityInput(entity, "kill");
+        return;
+    }
+
+    CreateTimer(delay, Timer_DestroyEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+stock void RemoveEdictEx(int edict, float delay = 0.0)
+{
+    if(!IsValidEdict(edict))
+        return;
+
+    if(delay < 0.0)
+    {
+        RemoveEdict(edict);
+        AcceptEntityInput(edict, "kill");
+        return;
+    }
+
+    CreateTimer(delay, Timer_DestroyEdict, EntIndexToEntRef(edict), TIMER_FLAG_NO_MAPCHANGE);
+}
+
 public Action Timer_DestroyEntity(Handle timer, int entRef)
 {
     int entity = EntRefToEntIndex(entRef);
@@ -745,6 +784,19 @@ public Action Timer_DestroyEntity(Handle timer, int entRef)
     {
         if(!AcceptEntityInput(entity, "Kill"))
             LogError("can not kill entity %d", entity);
+    }
+
+    return Plugin_Stop;
+}
+
+public Action Timer_DestroyEdict(Handle timer, int edictRef)
+{
+    int edict = EntRefToEntIndex(edictRef);
+    if(IsValidEdict(edict))
+    {
+        RemoveEdict(edict);
+        if(!AcceptEntityInput(edict, "Kill"))
+            LogError("can not kill edict %d", edict);
     }
 
     return Plugin_Stop;

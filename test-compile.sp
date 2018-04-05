@@ -40,6 +40,7 @@ public void OnPluginStart()
     
     // Instructor Hud
     InstructorHud hud = new InstructorHud("sasusi nm$l, fuck you all");
+    hud.EasyInit();
     hud.TargetEntity("die die die");
     hud.CaptionColor(59, 197, 187);
     hud.Positioning(false);
@@ -60,7 +61,12 @@ public void OnPluginStart()
     hud.tDisplayAll("sasusi nm$l, go fuck urself -> %d", 19990420);
     hud.Destroy(10.0);
     
+    EasyMissionHint(0, "sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
+    EasyMissionHintAll("sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
+
     // Misc
     FreeHandle(hndl);
     StopTimer(hndl);
+    RemoveEntityEx(0);
+    RemoveEdictEx(0);
 }
