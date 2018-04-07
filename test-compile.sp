@@ -63,6 +63,13 @@ public void OnPluginStart()
     
     EasyMissionHint(0, "sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
     EasyMissionHintAll("sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
+    
+    // Sound
+    PrepareSound("sanshengshi/nimasile.mp3");
+    int[] clients = new int [MaxClients];
+    EmitSoundEx(clients, MaxClients, "sanshengshi/nimasile.mp3");
+    EmitSoundOne(0, "sanshengshi/nimasile.mp3");
+    EmitSoundAll("sanshengshi/nimasile.mp3");
 
     // Misc
     FreeHandle(hndl);

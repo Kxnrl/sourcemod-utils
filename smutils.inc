@@ -728,6 +728,57 @@ stock void EasyMissionHintAll(const char[] caption, float holdtime, MissionHint_
 
 
 /**************************
+            Sound
+**************************/
+stock void PrepareSound(const char[] sound)
+{
+    static int table_download = INVALID_STRING_TABLE;
+    static int table_soundpre = INVALID_STRING_TABLE;
+
+    if(table_download == INVALID_STRING_TABLE)
+		table_download = FindStringTable("downloadables");
+
+    if(table_soundpre == INVALID_STRING_TABLE)
+		table_soundpre = FindStringTable("soundprecache");
+
+    char buffer[256];
+    bool prevls;  //Previous lock state.
+
+    // precache
+    FormatEx(buffer, 256, "*%s", sound);
+    prevls = LockStringTables(false);
+	AddToStringTable(table_soundpre, buffer);
+	LockStringTables(prevls);
+    
+    // downloader
+    FormatEx(buffer, 256, "sound/%s", sound);
+    prevls = LockStringTables(false);
+	AddToStringTable(table_download, buffer);
+	LockStringTables(prevls);
+}
+
+stock void EmitSoundEx(const int[] clients, int numClients, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
+{
+    char sound[256];
+    FormatEx(sound, 256, "*%s", sample);
+    EmitSoundEx(clients, numClients, sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
+}
+
+stock void EmitSoundOne(int client, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
+{
+    char sound[256];
+    FormatEx(sound, 256, "*%s", sample);
+    EmitSoundToClient(client, sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
+}
+
+stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
+{
+    char sound[256];
+    FormatEx(sound, 256, "*%s", sample);
+    EmitSoundToAll(sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
+}
+
+/**************************
             Misc
 **************************/
 stock void FreeHandle(Handle &hndl)
