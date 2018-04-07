@@ -70,6 +70,12 @@ public void OnPluginStart()
     EmitSoundEx(clients, MaxClients, "sanshengshi/nimasile.mp3");
     EmitSoundOne(0, "sanshengshi/nimasile.mp3");
     EmitSoundAll("sanshengshi/nimasile.mp3");
+    
+    // Weapon
+    GetWeaponClassname(0, -1, buffer, 32);
+    GetPlayerWeaponEntity(0, "sasusi_nm$l");
+    RemoveWeaponByClassname(0, "sasusi_nm$l");
+    RemoveWeapon(0, 1);
 
     // Misc
     FreeHandle(hndl);

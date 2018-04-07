@@ -778,6 +778,72 @@ stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int
     EmitSoundToAll(sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
 }
 
+
+/**************************
+            Weapon
+**************************/
+stock void GetWeaponClassname(int weapon, int index = -1, char[] classname, int maxLen)
+{
+    GetEdictClassname(weapon, classname, maxLen);
+
+    if(index == -1)
+        index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+
+    switch(index)
+    {
+        case 60: strcopy(classname, maxLen, "weapon_m4a1_silencer");
+        case 61: strcopy(classname, maxLen, "weapon_usp_silencer");
+        case 63: strcopy(classname, maxLen, "weapon_cz75a");
+        case 64: strcopy(classname, maxLen, "weapon_revolver");
+    }
+}
+
+public int GetPlayerWeaponEntity(int client, const char[] weapons)
+{
+    int m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
+    if(m_hMyWeapons == -1)
+        ThrowNativeError(SP_ERROR_ABORTED, "CBasePlayer.m_hMyWeapons offset is not valid.");
+
+    for(int offset = 0; offset < 128; offset += 4)
+    {
+        int weapon = GetEntDataEnt2(client, m_hMyWeapons+offset);
+
+        if(IsValidEdict(weapon))
+        {
+            char classname[32];
+            GetWeaponClassname(weapon, -1, classname, 32);
+
+            if(strcmp(weapons, classname, false) == 0)
+                return weapon;
+        }
+    }
+
+    return -1;
+}
+
+stock int RemoveWeaponByClassname(int client, const char[] weapons)
+{
+    int weapon = GetPlayerWeaponEntity(client, weapons);
+    return (weapon != -1) ? view_as<int>(RemoveWeapon(client, weapon)) : weapon;
+}
+
+stock bool RemoveWeapon(int client, int weapon)
+{
+    if(!RemovePlayerItem(client, weapon))
+        return false;
+
+    int m_hWeaponWorldModel = GetEntPropEnt(weapon, Prop_Send, "m_hWeaponWorldModel");
+    if(IsValidEdict(m_hWeaponWorldModel))
+        AcceptEntityInput(m_hWeaponWorldModel, "Kill"));
+
+    if(weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
+        SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", -1);
+
+    AcceptEntityInput(weapon, "Kill");
+
+    return true;
+}
+
 /**************************
             Misc
 **************************/
