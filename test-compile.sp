@@ -4,6 +4,7 @@ public void OnPluginStart()
 {
     char buffer[32];
     Handle hndl;
+    float pos[3];
     
     // Global
     ClientIsKyle(0);
@@ -19,7 +20,8 @@ public void OnPluginStart()
     SetClientKevlar(0, 0);
     SetClientHelmet(0, false);
     SetClientHud(0, 0);
-    SetClientWallHack(0, 0);
+    SetClientWallHack(0, 0.0);
+    GetClientAimTargetPos(0, pos);
     
     // SteamId
     ConvertSteam64ToSteam32("sasusi nm$l", buffer, 32);
@@ -83,6 +85,11 @@ public void OnPluginStart()
     GetPlayerWeaponEntity(0, "sasusi_nm$l");
     RemoveWeaponByClassname(0, "sasusi_nm$l");
     RemoveWeapon(0, 1);
+    
+    // Overlay
+    PrepareOverlay("sasusi/nmsl");
+    Overlay(0, "sasusi/nmsl");
+    OverlayAll("sasusi/nmsl", 5.0);
 
     // Misc
     FreeHandle(hndl);

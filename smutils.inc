@@ -25,8 +25,11 @@
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://kxnrl.com/git/SMUtils"
 
-#define CONSOLE 0
+#define CONSOLE   0
+#define ClientMin 1
+#define ClientMax MaxClients+1
 
+#include <sdktools>
 
 /**************************
             Global
@@ -52,13 +55,16 @@ stock int GetKyleIndex()
 **************************/
 stock bool ClientIsValid(int client, bool bot = false)
 {
-    if(client > MaxClients || client < CONSOLE)
-		return false;
+    if(client >= ClientMax || client <= ClientMin)
+        return false;
 
     if(!IsClientInGame(client))
         return false;
+    
+    if(IsClientSourceTV(client) || IsClientReplay(client))
+        return false;
 
-    return (bot || (!IsFakeClient(client) && !IsClientSourceTV(client)));
+    return (bot || !IsFakeClient(client));
 }
 
 stock bool ClientIsAlive(int client, bool bot = false)
@@ -80,17 +86,17 @@ stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool val
 
 stock void SetClientFrags(int client, int val)
 {
-	SetEntProp(client, Prop_Data, "m_iFrags", val);
+    SetEntProp(client, Prop_Data, "m_iFrags", val);
 }
 
 stock void SetClientDeaths(int client, int val)
 {
-	SetEntProp(client, Prop_Data, "m_iDeaths", val);
+    SetEntProp(client, Prop_Data, "m_iDeaths", val);
 }
 
 stock void SetClientMoney(int client, int val)
 {
-	SetEntProp(client, Prop_Send, "m_iAccount", val);
+    SetEntProp(client, Prop_Send, "m_iAccount", val);
 }
 
 stock void SetClientKevlar(int client, int val)
@@ -111,6 +117,34 @@ stock void SetClientHud(int client, int val)
 stock void SetClientWallHack(int client, float time) // time = GetGameTime() + val
 {
     SetEntPropFloat(client, Prop_Send, "m_flDetectedByEnemySensorTime", 0.0);
+}
+
+stock int GetClientAimTargetPos(int client, float pos[3])
+{
+    float fAgl[3];
+    float fOrg[3];
+
+    GetClientEyePosition(client,fOrg);
+    GetClientEyeAngles(client, fAgl);
+
+    Handle trace = TR_TraceRayFilterEx(fOrg, fAgl, MASK_SHOT, RayType_Infinite, TraceFilterAllEntities, client);
+
+    TR_GetEndPosition(pos, trace);
+
+    int entity = TR_GetEntityIndex(trace);
+
+    CloseHandle(trace);
+
+    return entity;
+}
+
+public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
+{
+	if(entity == client || entity > ClientMax || entity < ClientMin)
+
+		return false;
+
+	return true;
 }
 
 /**************************
@@ -510,9 +544,6 @@ stock void tTextAll(const char[] buffer, any ...)
 /**************************
         MissionHint
 **************************/
-#include <sdktools_functions>
-#include <sdktools_entinput>
-
 enum MissionHint_Icon
 {
     Icon_bulb = 0,
@@ -770,10 +801,10 @@ stock void PrepareSound(const char[] sound)
     static int table_soundpre = INVALID_STRING_TABLE;
 
     if(table_download == INVALID_STRING_TABLE)
-		table_download = FindStringTable("downloadables");
+        table_download = FindStringTable("downloadables");
 
     if(table_soundpre == INVALID_STRING_TABLE)
-		table_soundpre = FindStringTable("soundprecache");
+        table_soundpre = FindStringTable("soundprecache");
 
     char buffer[256];
     bool prevls;  //Previous lock state.
@@ -781,35 +812,35 @@ stock void PrepareSound(const char[] sound)
     // precache
     FormatEx(buffer, 256, "*%s", sound);
     prevls = LockStringTables(false);
-	AddToStringTable(table_soundpre, buffer);
-	LockStringTables(prevls);
+    AddToStringTable(table_soundpre, buffer);
+    LockStringTables(prevls);
     
     // downloader
     FormatEx(buffer, 256, "sound/%s", sound);
     prevls = LockStringTables(false);
-	AddToStringTable(table_download, buffer);
-	LockStringTables(prevls);
+    AddToStringTable(table_download, buffer);
+    LockStringTables(prevls);
 }
 
 stock void EmitSoundEx(const int[] clients, int numClients, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
     FormatEx(sound, 256, "*%s", sample);
-    EmitSoundEx(clients, numClients, sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
+    EmitSound(clients, numClients, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
 stock void EmitSoundOne(int client, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
     FormatEx(sound, 256, "*%s", sample);
-    EmitSoundToClient(client, sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
+    EmitSoundToClient(client, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
 }
 
 stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
     FormatEx(sound, 256, "*%s", sample);
-    EmitSoundToAll(sound, int entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
+    EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
 }
 
 
@@ -868,7 +899,7 @@ stock bool RemoveWeapon(int client, int weapon)
 
     int m_hWeaponWorldModel = GetEntPropEnt(weapon, Prop_Send, "m_hWeaponWorldModel");
     if(IsValidEdict(m_hWeaponWorldModel))
-        AcceptEntityInput(m_hWeaponWorldModel, "Kill"));
+        AcceptEntityInput(m_hWeaponWorldModel, "Kill");
 
     if(weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
         SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", -1);
@@ -878,25 +909,92 @@ stock bool RemoveWeapon(int client, int weapon)
     return true;
 }
 
+
+/**************************
+            Misc
+**************************/
+stock void PrepareOverlay(const char[] overlay)
+{
+    static int table_download = INVALID_STRING_TABLE;
+    if(table_download == INVALID_STRING_TABLE)
+        table_download = FindStringTable("downloadables");
+    
+    bool prev;
+    char path[256];
+    
+    FormatEx(path, 256, "%s.vmt", overlay);
+    PrecacheDecal(path, true);
+    
+    FormatEx(path, 256, "materials/%s.vmt", overlay);
+    prev = LockStringTables(false);
+    AddToStringTable(table_download, path);
+    LockStringTables(prev);
+
+    FormatEx(path, 256, "%s.vtf", overlay);
+    PrecacheDecal(path, true);
+
+    FormatEx(path, 256, "materials/%s.vtf", overlay);
+    prev = LockStringTables(false);
+    AddToStringTable(table_download, path);
+    LockStringTables(prev);
+}
+
+stock void Overlay(int client, const char[] overlay, float holdtime = 0.0)
+{
+    ClientCommand(client, "r_screenoverlay \"%s.vtf\"", overlay);
+
+    if(holdtime >= 0.0)
+        CreateTimer(holdtime, Timer_RemoveOverlay, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
+stock void OverlayAll(const char[] overlay, float holdtime = 0.0)
+{
+    for(int client = 1; client <= MaxClients; ++client)
+        if(ClientIsValid(client))
+            ClientCommand(client, "r_screenoverlay \"%s.vtf\"", overlay);
+
+    if(holdtime >= 0.0)
+        CreateTimer(holdtime, Timer_RemoveOverlay, -1, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Timer_RemoveOverlay(Handle timer, int userid)
+{
+    if(userid == -1)
+    {
+        for(int client = 1; client <= MaxClients; ++client)
+            if(ClientIsValid(client))
+                ClientCommand(client, "r_screenoverlay \"\"");
+            
+        return Plugin_Stop;
+    }
+    
+    int client = GetClientOfUserId(userid);
+
+    if(ClientIsValid(client))
+        ClientCommand(client, "r_screenoverlay \"\"");
+
+    return Plugin_Stop;
+}
+
 /**************************
             Misc
 **************************/
 stock void FreeHandle(Handle &hndl)
 {
     if(hndl != INVALID_HANDLE)
-	{
-		CloseHandle(hndl);
-		hndl = INVALID_HANDLE;
-	}
+    {
+        CloseHandle(hndl);
+        hndl = INVALID_HANDLE;
+    }
 }
 
 stock void StopTimer(Handle &timer)
 {
     if(timer != INVALID_HANDLE)
-	{
-		KillTimer(timer);
-		timer = INVALID_HANDLE;
-	}
+    {
+        KillTimer(timer);
+        timer = INVALID_HANDLE;
+    }
 }
 
 stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
