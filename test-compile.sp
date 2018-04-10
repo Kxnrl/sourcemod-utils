@@ -13,6 +13,13 @@ public void OnPluginStart()
     ClientIsValid(0);
     ClientIsAlive(0);
     FindClientBySteamId(AuthId_Steam2, "steamid");
+    SetClientFrags(0, 0);
+    SetClientDeaths(0, 0);
+    SetClientMoney(0, 0);
+    SetClientKevlar(0, 0);
+    SetClientHelmet(0, false);
+    SetClientHud(0, 0);
+    SetClientWallHack(0, 0);
     
     // SteamId
     ConvertSteam64ToSteam32("sasusi nm$l", buffer, 32);

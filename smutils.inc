@@ -78,6 +78,40 @@ stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool val
     return -1;
 }
 
+stock void SetClientFrags(int client, int val)
+{
+	SetEntProp(client, Prop_Data, "m_iFrags", val);
+}
+
+stock void SetClientDeaths(int client, int val)
+{
+	SetEntProp(client, Prop_Data, "m_iDeaths", val);
+}
+
+stock void SetClientMoney(int client, int val)
+{
+	SetEntProp(client, Prop_Send, "m_iAccount", val);
+}
+
+stock void SetClientKevlar(int client, int val)
+{
+    SetEntProp(client, Prop_Send, "m_ArmorValue", val);
+}
+
+stock void SetClientHelmet(int client, bool has)
+{
+    SetEntProp(client, Prop_Send, "m_bHasHelmet", has);
+}
+
+stock void SetClientHud(int client, int val)
+{
+    SetEntProp(client, Prop_Send, "m_iHideHUD", val);
+}
+
+stock void SetClientWallHack(int client, float time) // time = GetGameTime() + val
+{
+    SetEntPropFloat(client, Prop_Send, "m_flDetectedByEnemySensorTime", 0.0);
+}
 
 /**************************
             SteamId
