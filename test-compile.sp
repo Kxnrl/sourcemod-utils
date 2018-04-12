@@ -22,6 +22,10 @@ public void OnPluginStart()
     SetClientHud(0, 0);
     SetClientWallHack(0, 0.0);
     GetClientAimTargetPos(0, pos);
+    GetRandomClient(true);
+    HasClientUserFlags(0, ADMFLAG_ROOT);
+    HasClientAdminFlags(0, Admin_Root);
+    
     
     // SteamId
     ConvertSteam64ToSteam32("sasusi nm$l", buffer, 32);
@@ -96,4 +100,8 @@ public void OnPluginStart()
     StopTimer(hndl);
     RemoveEntityEx(0);
     RemoveEdictEx(0);
+    RandomInt(1);
+    RandomFloat();
+    RandomString(buffer, 32);
+    RandomStringEx("sasusi_nm$l", buffer, 32);
 }

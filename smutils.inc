@@ -84,6 +84,44 @@ stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool val
     return -1;
 }
 
+stock int GetRandomClient(bool alive = false, int ignoreFlags = 0)
+{
+    int[] clients = new int [MaxClients+1];
+    int total;
+
+    clients[total++] = -1;
+
+    for (int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+            if(!alive || ClientIsAlive(client))
+                if((ignoreFlags != 0 && HasClientUserFlags(client, ignoreFlags)) || ignoreFlags == 0) 
+                    clients[total++] = client;
+    
+    return clients[RandomInt(0, total)];
+}
+
+stock bool HasClientUserFlags(int client, int flags)
+{
+    int clientFlags = GetUserFlagBits(client);
+    return (clientFlags & ADMFLAG_ROOT || clientFlags & flags);
+}
+
+stock bool HasClientAdminFlags(int client, AdminFlag flag)
+{
+    char steamid[32];
+    
+    //try all steamId type
+    for(int i = 0; i < view_as<int>(AuthIdType); ++i)
+    {
+        GetClientAuthId(client, view_as<AuthIdType>(i), steamid, 32);
+        AdminId admin = FindAdminByIdentity(steamid, AUTHMETHOD_STEAM);
+        if(admin != INVALID_ADMIN_ID)
+            return (admin.HasFlag(flag, Access_Real) || admin.HasFlag(flag, Access_Effective));
+    }
+    
+    return false;
+}
+
 stock void SetClientFrags(int client, int val)
 {
     SetEntProp(client, Prop_Data, "m_iFrags", val);
@@ -1049,4 +1087,67 @@ public Action Timer_DestroyEdict(Handle timer, int edictRef)
     }
 
     return Plugin_Stop;
+}
+
+stock int RandomInt(int min = 0, int max = 2147483647)
+{
+    int random = GetURandomInt();
+
+    if(random == 0)
+        random++;
+
+    return RoundToCeil(float(random) / (float(2147483647) / float(max - min + 1))) + min - 1;
+}
+
+stock float RandomFloat(float min = 0.0, float max = 5201314.0)
+{
+    return (GetURandomFloat() * (max  - min)) + min;
+}
+
+stock void RandomString(char[] buffer, int maxLen)
+{
+    // terminator
+    maxLen--;
+
+    char random[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234556789";
+    int randlen = strlen(random) - 1;
+
+    int n = 0;
+    int c = 0;
+
+    while(n < maxLen)
+    {
+        if(random[0] == '\0')
+        {
+            c = GetRandomInt(33, 126);
+            buffer[n] = c;
+        }
+        else
+        {
+            c = GetRandomInt(0, randlen);
+            buffer[n] = random[c];
+        }
+
+        n++;
+    }
+
+    buffer[maxLen] = '\0';
+}
+
+stock void RandomStringEx(const char[] random, char[] buffer, int maxLen)
+{
+    maxLen--;
+    
+    int randlen = strlen(random) - 1;
+
+    int n = 0;
+    int c = 0;
+
+    while(n < maxLen)
+    {
+        c = GetRandomInt(0, randlen);
+        buffer[n++] = random[c];
+    }
+
+    buffer[maxLen] = '\0';
 }
