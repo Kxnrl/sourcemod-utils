@@ -54,7 +54,6 @@ public void OnPluginStart()
     // Instructor Hud
     InstructorHud hud = new InstructorHud("sasusi nm$l, fuck you all");
     hud.EasyInit();
-    hud.TargetEntity("die die die");
     hud.CaptionColor(59, 197, 187);
     hud.Positioning(false);
     hud.AllowInvisible(true);
@@ -72,8 +71,8 @@ public void OnPluginStart()
     hud.DisplayAll("sasusi nm$l, go fuck urself -> %d", 19990420);
     hud.tDisplay(0, "sasusi nm$l, go fuck urself -> %d", 19990420);
     hud.tDisplayAll("sasusi nm$l, go fuck urself -> %d", 19990420);
-    hud.Destroy(10.0);
-    
+    hud.Destroy();
+
     EasyMissionHint(0, "sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
     EasyMissionHintAll("sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
     
@@ -89,6 +88,9 @@ public void OnPluginStart()
     GetPlayerWeaponEntity(0, "sasusi_nm$l");
     RemoveWeaponByClassname(0, "sasusi_nm$l");
     RemoveWeapon(0, 1);
+    SetWeaponClip(0, 1);
+    SetWeaponAmmo(0, 1);
+    SetWeaponAmmoEx(1, 2, 3);
     
     // Overlay
     PrepareOverlay("sasusi/nmsl");

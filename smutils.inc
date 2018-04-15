@@ -582,7 +582,7 @@ stock void tTextAll(const char[] buffer, any ...)
 /**************************
         MissionHint
 **************************/
-enum MissionHint_Icon
+enum InstructorHud_Icon
 {
     Icon_bulb = 0,
     Icon_caution,
@@ -604,7 +604,7 @@ enum MissionHint_Icon
     Icon_present
 };
 
-static char MissionHint_Icon_String[MissionHint_Icon][32] =
+static char InstructorHud_Icon_String[InstructorHud_Icon][32] =
 {
     "icon_bulb",
     "icon_caution",
@@ -626,68 +626,79 @@ static char MissionHint_Icon_String[MissionHint_Icon][32] =
     "icon_present"
 };
 
-enum InstructorHud
-{
-    Invalid_Hud = -1
-};
-
 //https://developer.valvesoftware.com/wiki/Env_instructor_hint
-methodmap InstructorHud __nullable__
+methodmap InstructorHud < Event
 {
-    property int entity
+    public InstructorHud(const char[] name, int target = 0)
     {
-        public get(){ return view_as<int>(this); }
-    }
+        Event e = CreateEvent("instructor_server_hint_create", true);
+        if(e == null)
+            ThrowNativeError(SP_ERROR_NATIVE, "Create instructor_server_hint_create failed -> event is null.");
 
-    public InstructorHud(const char[] targetname)
-    {
-        int entity = CreateEntityByName ("env_instructor_hint");
-        if(entity <= MaxClients)
-            ThrowNativeError(SP_ERROR_NATIVE, "Create env_instructor_hint failed -> entity is invalid.");
+        e.SetInt("hint_flags", 0);
+        e.SetInt("hint_activator_userid", 0);
+        e.SetInt("hint_target", target);
+        e.SetBool("hint_local_player_only", true);
 
-        if(targetname[0])
-            DispatchKeyValue(entity, "targetname", targetname);
+        if(name[0] == 0)
+        {
+            e.SetString("hint_name", name);
+            e.SetString("hint_replace_key", name);
+        }
         else
         {
             char buffer[32];
-            FormatEx(buffer, 32, "env_instructor_hint_%d", entity);
-            DispatchKeyValue(entity, "targetname", buffer);
+            RandomString(buffer, 32);
+            e.SetString("hint_name", buffer);
+            e.SetString("hint_replace_key", buffer);
         }
-        
-        DispatchSpawn(entity);
 
-        return view_as<InstructorHud>(entity);
+        return view_as<InstructorHud>(e);
+    }
+
+    public void EnforceValue(const char[] key, const int val)
+    {
+        this.SetInt(key, val);
     }
     
-    public bool EnforceValue(const char[] key, const char[] val)
+    public void EnforceBool(const char[] key, const bool val)
     {
-        return DispatchKeyValue(this.entity, key, val);
+        this.SetBool(key, val);
+    }
+
+    public void EnforceFloat(const char[] key, const float val)
+    {
+        this.SetFloat(key, val);
     }
     
-    public bool EnforceFloat(const char[] key, const float val)
+    public void EnforceString(const char[] key, const char[] val)
     {
-        return DispatchKeyValueFloat(this.entity, key, val);
+        this.SetString(key, val);
     }
-    
-    public void Destroy(float delay = 0.0)
+
+    public void Destroy()
     {
-        RemoveEdictEx(this.entity, delay);
+        delete view_as<Event>(this);
     }
 
     public void Display(int client, const char[] buffer, any ...)
     {
         char caption[256];
         VFormat(caption, 256, buffer, 3);
-        this.EnforceValue("hint_caption", caption);
-        AcceptEntityInput(this.entity, "ShowHint", client, this.entity);
+        this.EnforceValue("hint_activator_userid", GetClientUserId(client));
+        this.EnforceString("hint_caption", caption);
+        this.EnforceString("hint_activator_caption", caption);
+        this.FireToClient(client);
+        this.EnforceValue("hint_activator_userid", 0);
     }
-    
+
     public void DisplayAll(const char[] buffer, any ...)
     {
         char caption[256];
         VFormat(caption, 256, buffer, 2);
-        this.EnforceValue("hint_caption", caption);
-        AcceptEntityInput(this.entity, "ShowHint");
+        this.EnforceString("hint_caption", caption);
+        this.EnforceString("hint_activator_caption", caption);
+        this.Fire();
     }
     
     public void tDisplay(int client, const char[] buffer, any ...)
@@ -695,8 +706,11 @@ methodmap InstructorHud __nullable__
         SetGlobalTransTarget(client);
         char caption[256];
         VFormat(caption, 256, buffer, 3);
-        this.EnforceValue("hint_caption", caption);
-        AcceptEntityInput(this.entity, "ShowHint", client, this.entity);
+        this.EnforceValue("hint_activator_userid", GetClientUserId(client));
+        this.EnforceString("hint_caption", caption);
+        this.EnforceString("hint_activator_caption", caption);
+        this.FireToClient(client);
+        this.EnforceValue("hint_activator_userid", 0);
         SetGlobalTransTarget(LANG_SERVER);
     }
     
@@ -708,88 +722,81 @@ methodmap InstructorHud __nullable__
             {
                 SetGlobalTransTarget(client);
                 VFormat(caption, 256, buffer, 2);
-                this.EnforceValue("hint_caption", caption);
-                AcceptEntityInput(this.entity, "ShowHint", client, this.entity);
+                this.EnforceValue("hint_activator_userid", GetClientUserId(client));
+                this.EnforceString("hint_caption", caption);
+                this.EnforceString("hint_activator_caption", caption);
+                this.FireToClient(client);
+                
             }
+        this.EnforceValue("hint_activator_userid", 0);
         SetGlobalTransTarget(LANG_SERVER);
     }
 
-    public bool TargetEntity(const char[] targetname)
-    {
-        return this.EnforceValue("hint_target", targetname);
-    }
-    
-    public bool CaptionColor(int r, int g, int b)
+    public void CaptionColor(int r, int g, int b)
     {
         char color[32];
         FormatEx(color, 32, "%d %d %d", r, g, b);
-        return this.EnforceValue("hint_color", color);
+        this.EnforceString("hint_color", color);
     }
     
-    public bool Positioning(bool positioning) // 0 = follow, 1 = hold on hud
+    public void Positioning(bool positioning) // true = follow, false = hold on hud
     {
-        return this.EnforceValue("hint_static", positioning ? "1" : "0");
+        this.EnforceBool("hint_static", positioning);
     }
 
-    public bool AllowInvisible(bool allow) // 0 = end immed on nodraw, 1 = yes
+    public void AllowInvisible(bool allow) // true = end immed on nodraw, false = yes
     {
-        return this.EnforceValue("hint_allow_nodraw_target", allow ? "1" : "0");
+        this.EnforceBool("hint_allow_nodraw_target", allow);
     }
     
-    public bool ForceCaption(bool show) // 0 = no, 1 = show when occluded
+    public void ForceCaption(bool show) // true = no, false = show when occluded
     {
-        return this.EnforceValue("hint_forcecaption", show ? "1" : "0");
+        this.EnforceBool("hint_forcecaption", show);
     }
     
-    public bool OnscreenIcon(MissionHint_Icon icon)
+    public void OnscreenIcon(InstructorHud_Icon icon)
     {
-        return this.EnforceValue("hint_icon_onscreen", MissionHint_Icon_String[icon]);
+        this.EnforceString("hint_icon_onscreen", InstructorHud_Icon_String[icon]);
     }
     
-    public bool OffscreenIcon(MissionHint_Icon icon)
+    public void OffscreenIcon(InstructorHud_Icon icon)
     {
-        return this.EnforceValue("hint_icon_offscreen", MissionHint_Icon_String[icon]);
+        this.EnforceString("hint_icon_offscreen", InstructorHud_Icon_String[icon]);
     }
     
-    public bool ShowOffscreen(bool show)
+    public void ShowOffscreen(bool show)
     {
-        return this.EnforceValue("hint_nooffscreen", show ? "0" : "1");
+        this.EnforceBool("hint_nooffscreen", show);
     }
 
-    public bool DisplayRange(float range)
+    public void DisplayRange(float range)
     {
-        return this.EnforceFloat("hint_range", range);
+        this.EnforceFloat("hint_range", range);
     }
     
-    public bool TimeOut(float time)
+    public void TimeOut(float time)
     {
-        return this.EnforceFloat("hint_timeout", time);
+        this.EnforceFloat("hint_timeout", time);
     }
     
-    public bool IconHeight(float height)
+    public void IconHeight(float height)
     {
-        return this.EnforceFloat("hint_icon_offset", height);
+        this.EnforceFloat("hint_icon_offset", height);
     }
     
-    public bool SizePulsing(int val)
+    public void SizePulsing(int val)
     {
-        char buffer[16];
-        IntToString(val, buffer, 16);
-        return this.EnforceValue("hint_pulseoption", buffer);
+        this.EnforceValue("hint_pulseoption", val);
     }
     
-    public bool AlphaPulsing(int val)
+    public void AlphaPulsing(int val)
     {
-        char buffer[16];
-        IntToString(val, buffer, 16);
-        return this.EnforceValue("hint_alphaoption", buffer);
+        this.EnforceValue("hint_alphaoption", val);
     }
-    
-    public bool Shaking(int val) // 0 = no, 1 = Narrow, 2 = Wide
+
+    public void Shaking(int val) // 0 = no, 1 = Narrow, 2 = Wide
     {
-        char buffer[16];
-        IntToString(val, buffer, 16);
-        return this.EnforceValue("hint_shakeoption", buffer);
+        this.EnforceValue("hint_shakeoption", val);
     }
 
     public void EasyInit()
@@ -798,7 +805,7 @@ methodmap InstructorHud __nullable__
         this.Positioning(false);
         this.AllowInvisible(true);
         this.ForceCaption(true);
-        this.ShowOffscreen(true);
+        this.ShowOffscreen(false);
         this.DisplayRange(1000.0);
         this.IconHeight(1.0);
         this.SizePulsing(0);
@@ -807,7 +814,7 @@ methodmap InstructorHud __nullable__
     }
 }
 
-stock void EasyMissionHint(int client, const char[] caption, float holdtime, MissionHint_Icon icon, int r, int g, int b)
+stock void EasyMissionHint(int client, const char[] caption, float holdtime, InstructorHud_Icon icon, int r, int g, int b)
 {
     InstructorHud hint = new InstructorHud("");
     hint.EasyInit();
@@ -818,7 +825,7 @@ stock void EasyMissionHint(int client, const char[] caption, float holdtime, Mis
     hint.Destroy();
 }
 
-stock void EasyMissionHintAll(const char[] caption, float holdtime, MissionHint_Icon icon, int r, int g, int b)
+stock void EasyMissionHintAll(const char[] caption, float holdtime, InstructorHud_Icon icon, int r, int g, int b)
 {
     InstructorHud hint = new InstructorHud("");
     hint.EasyInit();
@@ -901,7 +908,7 @@ stock void GetWeaponClassname(int weapon, int index = -1, char[] classname, int 
     }
 }
 
-public int GetPlayerWeaponEntity(int client, const char[] weapons)
+stock int GetPlayerWeaponEntity(int client, const char[] weapons)
 {
     int m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
     if(m_hMyWeapons == -1)
