@@ -286,7 +286,7 @@ stock void Chat(int client, const char[] buffer, any ...)
     Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageOne -> SayText2 is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
         return;
     }
 
@@ -312,7 +312,7 @@ stock void ChatAll(const char[] buffer, any ...)
     Protobuf SayText2 = view_as<Protobuf>(StartMessageAll("SayText2", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageAll -> SayText2 is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> SayText2 is null");
         return;
     }
     
@@ -338,7 +338,7 @@ stock void tChat(int client, const char[] buffer, any ...)
     Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageOne -> SayText2 is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
         return;
     }
     
@@ -429,7 +429,7 @@ stock void Hint(int client, const char[] buffer, any ...)
     Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(HintText == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageOne -> HintText is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> HintText is null");
         return;
     }
 
@@ -450,7 +450,7 @@ stock void HintAll(const char[] buffer, any ...)
     Protobuf HintText = view_as<Protobuf>(StartMessageAll("HintText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(HintText == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageAll -> HintText is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> HintText is null");
         return;
     }
     
@@ -505,7 +505,7 @@ stock void Text(int client, const char[] buffer, any ...)
     Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(TextMsg == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageOne -> TextMsg is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> TextMsg is null");
         return;
     }
 
@@ -531,7 +531,7 @@ stock void TextAll(const char[] buffer, any ...)
     Protobuf TextMsg = view_as<Protobuf>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(TextMsg == null)
     {
-        ThrowNativeError(SP_ERROR_ABORTED, "StartMessageAll -> TextMsg is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> TextMsg is null");
         return;
     }
     
@@ -643,7 +643,7 @@ methodmap InstructorHud __nullable__
     {
         int entity = CreateEntityByName ("env_instructor_hint");
         if(entity <= MaxClients)
-            ThrowNativeError(SP_ERROR_ABORTED, "Create env_instructor_hint failed -> entity is invalid.");
+            ThrowNativeError(SP_ERROR_NATIVE, "Create env_instructor_hint failed -> entity is invalid.");
 
         if(targetname[0])
             DispatchKeyValue(entity, "targetname", targetname);
@@ -905,7 +905,7 @@ public int GetPlayerWeaponEntity(int client, const char[] weapons)
 {
     int m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
     if(m_hMyWeapons == -1)
-        ThrowNativeError(SP_ERROR_ABORTED, "CBasePlayer.m_hMyWeapons offset is not valid.");
+        ThrowNativeError(SP_ERROR_NATIVE, "CBasePlayer.m_hMyWeapons offset is not valid.");
 
     for(int offset = 0; offset < 128; offset += 4)
     {
@@ -947,6 +947,33 @@ stock bool RemoveWeapon(int client, int weapon)
     return true;
 }
 
+stock void SetWeaponClip(int weapon, int ammo)
+{
+    if(!HasEntProp(weapon, Prop_Send, "m_iClip1"))
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iClip1 Props.");
+
+    SetEntProp(weapon, Prop_Send, "m_iClip1", ammo, 4, 0);
+}
+
+stock void SetWeaponAmmo(int weapon, int ammo)
+{
+    if(!HasEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount"))
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iPrimaryReserveAmmoCount Props.");
+
+    SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo);
+}
+
+stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
+{
+    int amtype = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
+    if(amtype == -1)
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d -> m_iPrimaryAmmoType is -1.");
+    
+    if(!HasEntProp(weapon, Prop_Send, "m_iAmmo"))
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iAmmo Props.");
+
+    SetEntProp(client, Prop_Send, "m_iAmmo", ammo, _, amtype);
+}
 
 /**************************
             Misc
