@@ -258,6 +258,7 @@ static char ChatPrefix[32] = "[\x04SM\x01]";
 static char ChatSpaces[32] = "   ";
 static bool ChatConSnd     = true;
 static bool StopNextChatCS = false;
+static bool StopNextPrefix = false;
 
 stock int SMUtils_SetChatPrefix(const char[] prefix)
 {
@@ -281,6 +282,12 @@ stock void SMUtils_StopNextChatCS()
     StopNextChatCS = true;
 }
 
+// set next chat ignore prefix
+stock void SMUtils_StopNextPrefix()
+{
+    StopNextPrefix = true;
+}
+
 stock void Chat(int client, const char[] buffer, any ...)
 {
     Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -292,7 +299,7 @@ stock void Chat(int client, const char[] buffer, any ...)
 
     char msg[256];
     VFormat(msg, 256, buffer, 3);
-    Format(msg, 256, "%s%s%s", ChatPrefix, ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
@@ -305,6 +312,34 @@ stock void Chat(int client, const char[] buffer, any ...)
     EndMessage();
     
     StopNextChatCS = false;
+    StopNextPrefix = false;
+}
+
+stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any ...)
+{
+    Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    if(SayText2 == null)
+    {
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
+        return;
+    }
+    
+    char msg[256];
+    VFormat(msg, 256, buffer, 4);
+    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    ProcessColorString(msg, 256);
+    
+    SayText2.SetInt("ent_idx", 0);
+    SayText2.SetBool("chat", StopNextChatCS ? false : ChatConSnd);
+    SayText2.SetString("msg_name", msg);
+    SayText2.AddString("params", "");
+    SayText2.AddString("params", "");
+    SayText2.AddString("params", "");
+    SayText2.AddString("params", "");
+    EndMessage();
+    
+    StopNextChatCS = false;
+    StopNextPrefix = false;
 }
 
 stock void ChatAll(const char[] buffer, any ...)
@@ -318,7 +353,7 @@ stock void ChatAll(const char[] buffer, any ...)
     
     char msg[256];
     VFormat(msg, 256, buffer, 2);
-    Format(msg, 256, "%s%s%s", ChatPrefix, ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
@@ -331,6 +366,7 @@ stock void ChatAll(const char[] buffer, any ...)
     EndMessage();
 
     StopNextChatCS = false;
+    StopNextPrefix = false;
 }
 
 stock void tChat(int client, const char[] buffer, any ...)
@@ -346,7 +382,7 @@ stock void tChat(int client, const char[] buffer, any ...)
 
     char msg[256];
     VFormat(msg, 256, buffer, 3);
-    Format(msg, 256, "%s%s%s", ChatPrefix, ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
@@ -359,6 +395,7 @@ stock void tChat(int client, const char[] buffer, any ...)
     EndMessage();
     
     StopNextChatCS = false;
+    StopNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
 }
 
@@ -371,7 +408,7 @@ stock void tChatAll(const char[] buffer, any ...)
             SetGlobalTransTarget(client);
 
             VFormat(msg, 256, buffer, 2);
-            Format(msg, 256, "%s%s%s", ChatPrefix, ChatSpaces, msg);
+            Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
 
             ProcessColorString(msg, 256);
 
@@ -393,6 +430,7 @@ stock void tChatAll(const char[] buffer, any ...)
         }
 
     StopNextChatCS = false;
+    StopNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
 }
 
