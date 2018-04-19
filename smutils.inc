@@ -25,9 +25,8 @@
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://kxnrl.com/git/SMUtils"
 
-#define CONSOLE   0
-#define ClientMin 1
-#define ClientMax MaxClients+1
+#define CONSOLE    0
+#define MinClients 0
 
 #include <sdktools>
 
@@ -53,23 +52,23 @@ stock int GetKyleIndex()
 /**************************
             Client
 **************************/
-stock bool ClientIsValid(int client, bool bot = false)
+stock bool ClientIsValid(int client, bool allowBot = false)
 {
-    if(client >= ClientMax || client <= ClientMin)
+    if(client > MaxClients || client < MinClients)
         return false;
 
     if(!IsClientInGame(client))
         return false;
-    
+
     if(IsClientSourceTV(client) || IsClientReplay(client))
         return false;
 
-    return (bot || !IsFakeClient(client));
+    return (allowBot || !IsFakeClient(client));
 }
 
-stock bool ClientIsAlive(int client, bool bot = false)
+stock bool ClientIsAlive(int client, bool allowBot = false)
 {
-    return (ClientIsValid(client, bot) && IsPlayerAlive(client));
+    return (ClientIsValid(client, allowBot) && IsPlayerAlive(client));
 }
 
 stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool validate = false)
@@ -178,7 +177,7 @@ stock int GetClientAimTargetPos(int client, float pos[3])
 
 public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
 {
-	if(entity == client || entity > ClientMax || entity < ClientMin)
+	if(entity == client || entity > MaxClients || entity < MinClients)
 
 		return false;
 
@@ -257,8 +256,8 @@ stock int CharToNumber(const int cNum)
 static char ChatPrefix[32] = "[\x04SM\x01]";
 static char ChatSpaces[32] = "   ";
 static bool ChatConSnd     = true;
-static bool StopNextChatCS = false;
-static bool StopNextPrefix = false;
+static bool SkipNextChatCS = false;
+static bool SkipNextPrefix = false;
 
 stock int SMUtils_SetChatPrefix(const char[] prefix)
 {
@@ -277,15 +276,15 @@ stock void SMUtils_SetChatConSnd(bool consnd)
 }
 
 // set next chat stop sound and log
-stock void SMUtils_StopNextChatCS()
+stock void SMUtils_SkipNextChatCS()
 {
-    StopNextChatCS = true;
+    SkipNextChatCS = true;
 }
 
 // set next chat ignore prefix
-stock void SMUtils_StopNextPrefix()
+stock void SMUtils_SkipNextPrefix()
 {
-    StopNextPrefix = true;
+    SkipNextPrefix = true;
 }
 
 stock void Chat(int client, const char[] buffer, any ...)
@@ -299,11 +298,11 @@ stock void Chat(int client, const char[] buffer, any ...)
 
     char msg[256];
     VFormat(msg, 256, buffer, 3);
-    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", StopNextChatCS ? false : ChatConSnd);
+    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
     SayText2.SetString("msg_name", msg);
     SayText2.AddString("params", "");
     SayText2.AddString("params", "");
@@ -311,8 +310,8 @@ stock void Chat(int client, const char[] buffer, any ...)
     SayText2.AddString("params", "");
     EndMessage();
     
-    StopNextChatCS = false;
-    StopNextPrefix = false;
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
 }
 
 stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any ...)
@@ -326,11 +325,11 @@ stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any 
     
     char msg[256];
     VFormat(msg, 256, buffer, 4);
-    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
     
     SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", StopNextChatCS ? false : ChatConSnd);
+    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
     SayText2.SetString("msg_name", msg);
     SayText2.AddString("params", "");
     SayText2.AddString("params", "");
@@ -338,8 +337,8 @@ stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any 
     SayText2.AddString("params", "");
     EndMessage();
     
-    StopNextChatCS = false;
-    StopNextPrefix = false;
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
 }
 
 stock void ChatAll(const char[] buffer, any ...)
@@ -353,11 +352,11 @@ stock void ChatAll(const char[] buffer, any ...)
     
     char msg[256];
     VFormat(msg, 256, buffer, 2);
-    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", StopNextChatCS ? false : ChatConSnd);
+    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
     SayText2.SetString("msg_name", msg);
     SayText2.AddString("params", "");
     SayText2.AddString("params", "");
@@ -365,8 +364,8 @@ stock void ChatAll(const char[] buffer, any ...)
     SayText2.AddString("params", "");
     EndMessage();
 
-    StopNextChatCS = false;
-    StopNextPrefix = false;
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
 }
 
 stock void tChat(int client, const char[] buffer, any ...)
@@ -382,11 +381,11 @@ stock void tChat(int client, const char[] buffer, any ...)
 
     char msg[256];
     VFormat(msg, 256, buffer, 3);
-    Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", StopNextChatCS ? false : ChatConSnd);
+    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
     SayText2.SetString("msg_name", msg);
     SayText2.AddString("params", "");
     SayText2.AddString("params", "");
@@ -394,8 +393,8 @@ stock void tChat(int client, const char[] buffer, any ...)
     SayText2.AddString("params", "");
     EndMessage();
     
-    StopNextChatCS = false;
-    StopNextPrefix = false;
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
 }
 
@@ -408,7 +407,7 @@ stock void tChatAll(const char[] buffer, any ...)
             SetGlobalTransTarget(client);
 
             VFormat(msg, 256, buffer, 2);
-            Format(msg, 256, "%s%s%s", StopNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+            Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
 
             ProcessColorString(msg, 256);
 
@@ -420,7 +419,7 @@ stock void tChatAll(const char[] buffer, any ...)
             }
 
             SayText2.SetInt("ent_idx", 0);
-            SayText2.SetBool("chat", StopNextChatCS ? false : ChatConSnd);
+            SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
             SayText2.SetString("msg_name", msg);
             SayText2.AddString("params", "");
             SayText2.AddString("params", "");
@@ -429,8 +428,8 @@ stock void tChatAll(const char[] buffer, any ...)
             EndMessage();
         }
 
-    StopNextChatCS = false;
-    StopNextPrefix = false;
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
 }
 
