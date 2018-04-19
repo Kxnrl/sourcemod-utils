@@ -1012,7 +1012,7 @@ stock bool RemoveWeapon(int client, int weapon)
 stock void SetWeaponClip(int weapon, int ammo)
 {
     if(!HasEntProp(weapon, Prop_Send, "m_iClip1"))
-        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iClip1 Props.");
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iClip1 Props.", weapon);
 
     SetEntProp(weapon, Prop_Send, "m_iClip1", ammo, 4, 0);
 }
@@ -1020,7 +1020,7 @@ stock void SetWeaponClip(int weapon, int ammo)
 stock void SetWeaponAmmo(int weapon, int ammo)
 {
     if(!HasEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount"))
-        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iPrimaryReserveAmmoCount Props.");
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iPrimaryReserveAmmoCount Props.", weapon);
 
     SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo);
 }
@@ -1029,10 +1029,10 @@ stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
 {
     int amtype = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
     if(amtype == -1)
-        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d -> m_iPrimaryAmmoType is -1.");
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d -> m_iPrimaryAmmoType is -1.", weapon);
     
     if(!HasEntProp(weapon, Prop_Send, "m_iAmmo"))
-        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iAmmo Props.");
+        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iAmmo Props.", weapon);
 
     SetEntProp(client, Prop_Send, "m_iAmmo", ammo, _, amtype);
 }
