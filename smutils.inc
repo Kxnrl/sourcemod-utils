@@ -667,16 +667,120 @@ static char InstructorHud_Icon_String[InstructorHud_Icon][32] =
 //https://developer.valvesoftware.com/wiki/Env_instructor_hint
 methodmap InstructorHud < Event
 {
+    property int target {
+        public get () { return this.GetInt("hint_target", 0); }
+        public set (int val) { this.SetInt("hint_target", val); }
+    }
+    
+    property int flags {
+        public get () { return this.GetInt("hint_flags", 0); }
+        public set (int val) { this.SetInt("hint_flags", val); }
+    }
+    
+    property int activator_userid {
+        public get () { return this.GetInt("hint_activator_userid", 0); }
+        public set (int val) { this.SetInt("hint_activator_userid", val); }
+    }
+
+    // true = follow, false = hold on hud
+    property bool positioning {
+        public get () { return this.GetBool("hint_static", true); }
+        public set (bool val) { this.SetBool("hint_static", val); }
+    }
+    
+    // true = end immed on nodraw, false = yes
+    property bool invisible { 
+        public get () { return this.GetBool("hint_allow_nodraw_target", true); }
+        public set (bool val) { this.SetBool("hint_allow_nodraw_target", val); }
+    }
+
+    // true = no, false = show when occluded
+    property bool forcecaption { 
+        public get () { return this.GetBool("hint_forcecaption", false); }
+        public set (bool val) { this.SetBool("hint_forcecaption", val); }
+    }
+    
+    property InstructorHud_Icon icon_onscreen { 
+        public get ()
+        {
+            char iconname[32];
+            this.GetString("hint_icon_onscreen", iconname, 32);
+            for(int i = 0; i < view_as<int>(InstructorHud_Icon); ++i)
+                if(strcmp(iconname, InstructorHud_Icon_String[view_as<InstructorHud_Icon>(i)]) == 0)
+                    return view_as<InstructorHud_Icon>(i);
+            return Icon_bulb;
+        }
+        public set (InstructorHud_Icon icon) { this.SetString("hint_icon_onscreen", InstructorHud_Icon_String[icon]); }
+    }
+    
+    property InstructorHud_Icon icon_offscreen { 
+        public get ()
+        {
+            char iconname[32];
+            this.GetString("hint_icon_offscreen", iconname, 32);
+            for(int i = 0; i < view_as<int>(InstructorHud_Icon); ++i)
+                if(strcmp(iconname, InstructorHud_Icon_String[view_as<InstructorHud_Icon>(i)]) == 0)
+                    return view_as<InstructorHud_Icon>(i);
+            return Icon_bulb;
+        }
+        public set (InstructorHud_Icon icon) { this.SetString("hint_icon_offscreen", InstructorHud_Icon_String[icon]); }
+    }
+    
+    // true = don`t show, false = show;
+    property bool show_offscreen {
+        public get () { return this.GetBool("hint_nooffscreen", false); }
+        public set (bool val) { this.SetBool("hint_nooffscreen", val); }
+    }
+    
+    property float range {
+        public get () { return this.GetFloat("hint_range", 1000.0); }
+        public set (float val) { this.SetFloat("hint_nooffscreen", val); }
+    }
+    
+    property float timeout {
+        public get () { return this.GetFloat("hint_timeout", 1.0); }
+        public set (float val) { this.SetFloat("hint_timeout", val); }
+    }
+    
+    property float offset {
+        public get () { return this.GetFloat("hint_icon_offset", 0.0); }
+        public set (float val) { this.SetFloat("hint_icon_offset", val); }
+    }
+    
+    property int pulseoption {
+        public get () { return this.GetInt("hint_pulseoption", 0); }
+        public set (int val) { this.SetInt("hint_pulseoption", val); }
+    }
+    
+    property int alphaoption {
+        public get () { return this.GetInt("hint_alphaoption", 0); }
+        public set (int val) { this.SetInt("hint_alphaoption", val); }
+    }
+    
+    // 0 = no, 1 = Narrow, 2 = Wide
+    property int shakeoption {
+        public get () { return this.GetInt("hint_shakeoption", 0); }
+        public set (int val) { this.SetInt("hint_shakeoption", val); }
+    }
+    
+    public void color(int r, int g, int b)
+    {
+        char clr[32];
+        FormatEx(clr, 32, "%d %d %d", r, g, b);
+        this.SetString("hint_color", clr);
+    }
+
     public InstructorHud(const char[] name, int target = 0)
     {
         Event e = CreateEvent("instructor_server_hint_create", true);
         if(e == null)
             ThrowNativeError(SP_ERROR_NATIVE, "Create instructor_server_hint_create failed -> event is null.");
 
+        e.SetBool("hint_local_player_only", true);
+
         e.SetInt("hint_flags", 0);
         e.SetInt("hint_activator_userid", 0);
         e.SetInt("hint_target", target);
-        e.SetBool("hint_local_player_only", true);
 
         if(name[0] == 0)
         {
@@ -693,25 +797,19 @@ methodmap InstructorHud < Event
 
         return view_as<InstructorHud>(e);
     }
-
-    public void EnforceValue(const char[] key, const int val)
-    {
-        this.SetInt(key, val);
-    }
     
-    public void EnforceBool(const char[] key, const bool val)
+    public void EasyInit()
     {
-        this.SetBool(key, val);
-    }
-
-    public void EnforceFloat(const char[] key, const float val)
-    {
-        this.SetFloat(key, val);
-    }
-    
-    public void EnforceString(const char[] key, const char[] val)
-    {
-        this.SetString(key, val);
+        this.color(57, 197, 187);
+        this.positioning = false;
+        this.invisible = true;
+        this.forcecaption = false;
+        this.show_offscreen = false;
+        this.range = 1000.0;
+        this.offset = 1.0;
+        this.pulseoption = 0;
+        this.alphaoption = 0;
+        this.shakeoption = 0;
     }
 
     public void Destroy()
@@ -723,32 +821,32 @@ methodmap InstructorHud < Event
     {
         char caption[256];
         VFormat(caption, 256, buffer, 3);
-        this.EnforceValue("hint_activator_userid", GetClientUserId(client));
-        this.EnforceString("hint_caption", caption);
-        this.EnforceString("hint_activator_caption", caption);
+        this.activator_userid = GetClientUserId(client);
+        this.SetString("hint_caption", caption);
+        this.SetString("hint_activator_caption", caption);
         this.FireToClient(client);
-        this.EnforceValue("hint_activator_userid", 0);
+        this.activator_userid = 0;
     }
 
     public void DisplayAll(const char[] buffer, any ...)
     {
         char caption[256];
         VFormat(caption, 256, buffer, 2);
-        this.EnforceString("hint_caption", caption);
-        this.EnforceString("hint_activator_caption", caption);
+        this.SetString("hint_caption", caption);
+        this.SetString("hint_activator_caption", caption);
         this.Fire();
     }
-    
+
     public void tDisplay(int client, const char[] buffer, any ...)
     {
         SetGlobalTransTarget(client);
         char caption[256];
         VFormat(caption, 256, buffer, 3);
-        this.EnforceValue("hint_activator_userid", GetClientUserId(client));
-        this.EnforceString("hint_caption", caption);
-        this.EnforceString("hint_activator_caption", caption);
+        this.activator_userid = GetClientUserId(client);
+        this.SetString("hint_caption", caption);
+        this.SetString("hint_activator_caption", caption);
         this.FireToClient(client);
-        this.EnforceValue("hint_activator_userid", 0);
+        this.activator_userid = 0;
         SetGlobalTransTarget(LANG_SERVER);
     }
     
@@ -760,95 +858,14 @@ methodmap InstructorHud < Event
             {
                 SetGlobalTransTarget(client);
                 VFormat(caption, 256, buffer, 2);
-                this.EnforceValue("hint_activator_userid", GetClientUserId(client));
-                this.EnforceString("hint_caption", caption);
-                this.EnforceString("hint_activator_caption", caption);
+                this.activator_userid = GetClientUserId(client);
+                this.SetString("hint_caption", caption);
+                this.SetString("hint_activator_caption", caption);
                 this.FireToClient(client);
                 
             }
-        this.EnforceValue("hint_activator_userid", 0);
+        this.activator_userid = 0;
         SetGlobalTransTarget(LANG_SERVER);
-    }
-
-    public void CaptionColor(int r, int g, int b)
-    {
-        char color[32];
-        FormatEx(color, 32, "%d %d %d", r, g, b);
-        this.EnforceString("hint_color", color);
-    }
-    
-    public void Positioning(bool positioning) // true = follow, false = hold on hud
-    {
-        this.EnforceBool("hint_static", positioning);
-    }
-
-    public void AllowInvisible(bool allow) // true = end immed on nodraw, false = yes
-    {
-        this.EnforceBool("hint_allow_nodraw_target", allow);
-    }
-    
-    public void ForceCaption(bool show) // true = no, false = show when occluded
-    {
-        this.EnforceBool("hint_forcecaption", show);
-    }
-    
-    public void OnscreenIcon(InstructorHud_Icon icon)
-    {
-        this.EnforceString("hint_icon_onscreen", InstructorHud_Icon_String[icon]);
-    }
-    
-    public void OffscreenIcon(InstructorHud_Icon icon)
-    {
-        this.EnforceString("hint_icon_offscreen", InstructorHud_Icon_String[icon]);
-    }
-    
-    public void ShowOffscreen(bool show)
-    {
-        this.EnforceBool("hint_nooffscreen", show);
-    }
-
-    public void DisplayRange(float range)
-    {
-        this.EnforceFloat("hint_range", range);
-    }
-    
-    public void TimeOut(float time)
-    {
-        this.EnforceFloat("hint_timeout", time);
-    }
-    
-    public void IconHeight(float height)
-    {
-        this.EnforceFloat("hint_icon_offset", height);
-    }
-    
-    public void SizePulsing(int val)
-    {
-        this.EnforceValue("hint_pulseoption", val);
-    }
-    
-    public void AlphaPulsing(int val)
-    {
-        this.EnforceValue("hint_alphaoption", val);
-    }
-
-    public void Shaking(int val) // 0 = no, 1 = Narrow, 2 = Wide
-    {
-        this.EnforceValue("hint_shakeoption", val);
-    }
-
-    public void EasyInit()
-    {
-        this.CaptionColor(57, 197, 187);
-        this.Positioning(false);
-        this.AllowInvisible(true);
-        this.ForceCaption(true);
-        this.ShowOffscreen(false);
-        this.DisplayRange(1000.0);
-        this.IconHeight(1.0);
-        this.SizePulsing(0);
-        this.AlphaPulsing(0);
-        this.Shaking(0);
     }
 }
 
@@ -856,9 +873,9 @@ stock void EasyMissionHint(int client, const char[] caption, float holdtime, Ins
 {
     InstructorHud hint = new InstructorHud("");
     hint.EasyInit();
-    hint.CaptionColor(r, g, b);
-    hint.TimeOut(holdtime);
-    hint.OnscreenIcon(icon);
+    hint.color(r, g, b);
+    hint.timeout = holdtime;
+    hint.icon_onscreen = icon;
     hint.Display(client, caption);
     hint.Destroy();
 }
@@ -867,9 +884,9 @@ stock void EasyMissionHintAll(const char[] caption, float holdtime, InstructorHu
 {
     InstructorHud hint = new InstructorHud("");
     hint.EasyInit();
-    hint.CaptionColor(r, g, b);
-    hint.TimeOut(holdtime);
-    hint.OnscreenIcon(icon);
+    hint.color(r, g, b);
+    hint.timeout = holdtime;
+    hint.icon_onscreen = icon;
     hint.DisplayAll(caption);
     hint.Destroy();
 }
