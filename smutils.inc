@@ -1240,3 +1240,33 @@ stock void RandomStringEx(const char[] random, char[] buffer, int maxLen)
 
     buffer[maxLen] = '\0';
 }
+
+stock void StringToLower(const char[] input, char[] output, int size)
+{
+    size--;
+    output[0] = '\0';
+
+    int x = 0;
+    while(input[x] != '\0' && x < size)
+    {
+        output[x] = CharToLower(input[x]);
+        x++;
+    }
+
+    output[x] = '\0';
+}
+
+stock void StringToUpper(const char[] input, char[] output, int size)
+{
+    size--;
+    output[0] = '\0';
+
+    int x = 0;
+    while(input[x] != '\0' && x < size)
+    {
+        output[x] = CharToUpper(input[x]);
+        x++;
+    }
+
+    output[x] = '\0';
+}
