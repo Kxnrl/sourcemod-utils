@@ -26,7 +26,7 @@
 #define SMUtils_URL     "https://kxnrl.com/git/SMUtils"
 
 #define CONSOLE    0
-#define MinClients 0
+#define MinClients 1
 
 #include <sdktools>
 
