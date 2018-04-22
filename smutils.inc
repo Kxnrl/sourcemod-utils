@@ -4,13 +4,13 @@
 /*                                                                */
 /*                                                                */
 /*  File:          smutils.inc                                    */
-/*  Description:   Some helpful functions. -> go fuck sasusi.     */
+/*  Description:   Some helpful functions.                        */
 /*                                                                */
 /*                                                                */
 /*  Copyright (C) 2018  Kyle   https://kxnrl.com                  */
 /*  2018/04/04 10:17:14                                           */
 /*                                                                */
-/*  This code is licensed under the MIT License (MIT).            */
+/*  This code is licensed under the GPLv3 License.                */
 /*                                                                */
 /******************************************************************/
 
