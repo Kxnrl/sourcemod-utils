@@ -1036,6 +1036,29 @@ stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
     SetEntProp(client, Prop_Send, "m_iAmmo", ammo, _, amtype);
 }
 
+stock void StripWeapon(int client, bool suit = false)
+{
+    int stripper = CreateEntityByName("player_weaponstrip"); 
+    if(stripper == -1)
+        ThrowNativeError(SP_ERROR_NATIVE, "Create player_weaponstrip failed.");
+    
+    AcceptEntityInput(stripper, !suit ? "Strip" : "StripWeaponsAndSuit", client);
+    AcceptEntityInput(stripper, "Kill");
+}
+
+stock void StripWeaponAll()
+{
+    int stripper = CreateEntityByName("game_player_equip");
+    if(stripper == -1)
+        ThrowNativeError(SP_ERROR_NATIVE, "Create game_player_equip failed.");
+
+    DispatchKeyValue(stripper, "spawnflags", "2");
+
+    AcceptEntityInput(stripper, "TriggerForAllPlayers");
+    AcceptEntityInput(stripper, "Kill");
+}
+
+
 /**************************
             Misc
 **************************/
@@ -1102,25 +1125,36 @@ public Action Timer_RemoveOverlay(Handle timer, int userid)
     return Plugin_Stop;
 }
 
+
 /**************************
-            Misc
+            Entity
 **************************/
-stock void FreeHandle(Handle &hndl)
+stock bool SetEntityParent(int child, int parent)
 {
-    if(hndl != INVALID_HANDLE)
-    {
-        CloseHandle(hndl);
-        hndl = INVALID_HANDLE;
-    }
+    SetVariantString("!activator");
+    return AcceptEntityInput(child, "SetParent", parent, child, 0);
 }
 
-stock void StopTimer(Handle &timer)
+stock bool SelfKillEntity(int entity, float delay = 0.0)
 {
-    if(timer != INVALID_HANDLE)
-    {
-        KillTimer(timer);
-        timer = INVALID_HANDLE;
-    }
+    if(IsValidEntity(entity))
+        return true;
+
+    char input[128];
+    FormatEx(input, 128, "OnUser4 !self:Kill::%.2f:1", delay);
+    SetVariantString(input);
+    return (AcceptEntityInput(entity, "AddOutput") && AcceptEntityInput(entity, "FireUser4"));
+}
+
+stock bool SelfKillEntityEx(int entity, float delay = 0.0)
+{
+    if(IsValidEntity(entity))
+        return true;
+
+    char input[128];
+    FormatEx(input, 128, "OnUser4 !self:KillHierarchy::%.2f:1", delay);
+    SetVariantString(input);
+    return (AcceptEntityInput(entity, "AddOutput") && AcceptEntityInput(entity, "FireUser4"));
 }
 
 stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
@@ -1130,7 +1164,7 @@ stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
 
     if(delay < 0.0)
     {
-        AcceptEntityInput(entity, "kill");
+        AcceptEntityInput(entity, "Kill");
         return;
     }
 
@@ -1145,7 +1179,7 @@ stock void RemoveEdictEx(int edict, float delay = 0.0)
     if(delay < 0.0)
     {
         RemoveEdict(edict);
-        AcceptEntityInput(edict, "kill");
+        AcceptEntityInput(edict, "Kill");
         return;
     }
 
@@ -1175,6 +1209,28 @@ public Action Timer_DestroyEdict(Handle timer, int edictRef)
     }
 
     return Plugin_Stop;
+}
+
+
+/**************************
+            Misc
+**************************/
+stock void FreeHandle(Handle &hndl)
+{
+    if(hndl != INVALID_HANDLE)
+    {
+        CloseHandle(hndl);
+        hndl = INVALID_HANDLE;
+    }
+}
+
+stock void StopTimer(Handle &timer)
+{
+    if(timer != INVALID_HANDLE)
+    {
+        KillTimer(timer);
+        timer = INVALID_HANDLE;
+    }
 }
 
 stock int RandomInt(int min = 0, int max = 2147483647)
