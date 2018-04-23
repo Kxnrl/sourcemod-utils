@@ -184,6 +184,56 @@ public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
 	return true;
 }
 
+int GetTeamAlivePlayers(int team)
+{
+    int total = 0;
+    for(int client = 1; client <= MaxClients; ++client)
+        if(ClientIsAlive(client) && GetClientTeam(team))
+            total++;
+    return total;
+}
+
+int GetPlayers(bool ingame = true, bool = alive = false)
+{
+    int total = 0;
+    for(int client = 1; client <= MaxClients; ++client)
+        if(IsClientConnected(client))
+        {
+            if(ingame && !IsClientInGame(client))
+                continue;
+            
+            if(alive && !IsPlayerAlive(client))
+                continue;
+
+            total++;
+        }
+    return players;
+}
+
+int GetPlayersEx(bool alive = false, int &tes, int &cts)
+{
+    tes = 0;
+    cts = 0;
+    int total = 0;
+    int iTeam = 1;
+    for(int client = 1; client <= MaxClients; ++client)
+        if(IsClientInGame(client))
+        {
+            if(alive && !IsPlayerAlive(client))
+                continue;
+
+            iTeam = GetClientTeam(client);
+            
+            if(iTeam == 2)
+                tes++;
+            else if(iTeam == 3)
+                cts++;
+
+            total++;
+        }
+    return total;
+}
+
 /**************************
             SteamId
 **************************/
@@ -1058,6 +1108,14 @@ stock void StripWeaponAll()
     AcceptEntityInput(stripper, "Kill");
 }
 
+stock int GetClientActiveWeapon(int client)
+{
+    if(!ClientIsAlive(client))
+        return -1;
+
+    return GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+}
+
 
 /**************************
             Misc
@@ -1133,6 +1191,24 @@ stock bool SetEntityParent(int child, int parent)
 {
     SetVariantString("!activator");
     return AcceptEntityInput(child, "SetParent", parent, child, 0);
+}
+
+stock bool SetEntityParentEx(int child, int parent, const char[] attchment, const float offset[3] = {0.0, 0.0, 0.0})
+{
+    if(!SetEntityParent(child, parent))
+        return false;
+
+    SetVariantString(attchment);
+    
+    if(offset[0] != 0.0 || offset[1] != 0.0 || offset[2] != 0.0)
+        return AcceptEntityInput(child, "SetParentAttachment", parent, child);
+
+    float fPos[3];
+    GetEntPropVector(parent, Prop_Send, "m_vecOrigin", fPos);
+    AddVectors(parent, offset, parent);
+    TeleportEntity(child, fPos, NULL_VECTOR, NULL_VECTOR);
+
+    return AcceptEntityInput(child, "SetParentAttachmentMaintainOffset", parent, child);
 }
 
 stock bool SelfKillEntity(int entity, float delay = 0.0)
