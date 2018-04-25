@@ -21,7 +21,7 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version 1.0
+#define SMUtils_Version "1.0+22"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://kxnrl.com/git/SMUtils"
 
@@ -90,7 +90,7 @@ stock int GetRandomClient(bool alive = false, int ignoreFlags = 0)
 
     clients[total++] = -1;
 
-    for (int client = 1; client <= MaxClients; client++)
+    for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
             if(!alive || ClientIsAlive(client))
                 if((ignoreFlags != 0 && HasClientUserFlags(client, ignoreFlags)) || ignoreFlags == 0) 
@@ -184,7 +184,7 @@ public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
 	return true;
 }
 
-int GetTeamAlivePlayers(int team)
+stock int GetTeamAlivePlayers(int team)
 {
     int total = 0;
     for(int client = 1; client <= MaxClients; ++client)
@@ -193,7 +193,7 @@ int GetTeamAlivePlayers(int team)
     return total;
 }
 
-int GetPlayers(bool ingame = true, bool = alive = false)
+stock int GetPlayers(bool ingame = true, bool alive = false)
 {
     int total = 0;
     for(int client = 1; client <= MaxClients; ++client)
@@ -210,7 +210,7 @@ int GetPlayers(bool ingame = true, bool = alive = false)
     return players;
 }
 
-int GetPlayersEx(bool alive = false, int &tes, int &cts)
+stock int GetPlayersEx(bool alive = false, int &tes, int &cts)
 {
     tes = 0;
     cts = 0;
@@ -391,6 +391,43 @@ stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any 
     SkipNextPrefix = false;
 }
 
+stock void ChatTeam(int team, bool spec = true, const char[] buffer, any ...)
+{
+    int clients = new int [MAXPLAYERS+1];
+    int total = 0;
+    int iTeam = 0;
+    
+    for(int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+        {
+            iTeam = GetClientTeam(client);
+            if(iTeam == team || (spec && iTeam == 1))
+                clients[total++] = client;
+        }
+
+    char message[256];
+    VFormat(message, 256, buffer, 4);
+    ChatEx(clients, total, message);
+}
+
+stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
+{
+    int clients = new int [MAXPLAYERS+1];
+    int total = 0;
+    int iTeam = 0;
+    
+    for(int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+        {
+            if((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
+                clients[total++] = client;
+        }
+        
+    char message[256];
+    VFormat(message, 256, buffer, 4);
+    ChatEx(clients, total, message);
+}
+
 stock void ChatAll(const char[] buffer, any ...)
 {
     Protobuf SayText2 = view_as<Protobuf>(StartMessageAll("SayText2", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -443,6 +480,89 @@ stock void tChat(int client, const char[] buffer, any ...)
     SayText2.AddString("params", "");
     EndMessage();
     
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
+    SetGlobalTransTarget(LANG_SERVER);
+}
+
+stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
+{
+    int clients = new int [MAXPLAYERS+1];
+    int total = 0;
+    int iTeam = 0;
+    
+    for(int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+        {
+            if((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
+            {
+                SetGlobalTransTarget(client);
+
+                VFormat(msg, 256, buffer, 2);
+                Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+
+                ProcessColorString(msg, 256);
+
+                Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+                if(SayText2 == null)
+                {
+                    LogError("StartMessageOne -> SayText2 is null");
+                    continue;
+                }
+
+                SayText2.SetInt("ent_idx", 0);
+                SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
+                SayText2.SetString("msg_name", msg);
+                SayText2.AddString("params", "");
+                SayText2.AddString("params", "");
+                SayText2.AddString("params", "");
+                SayText2.AddString("params", "");
+                EndMessage();
+            }
+        }
+    
+    SkipNextChatCS = false;
+    SkipNextPrefix = false;
+    SetGlobalTransTarget(LANG_SERVER);
+}
+
+stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
+{
+    int clients = new int [MAXPLAYERS+1];
+    int total = 0;
+    int iTeam = 0;
+    
+    for(int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+        {
+            iTeam = GetClientTeam(client);
+            if(iTeam == team || (spec && iTeam == 1))
+            {
+                SetGlobalTransTarget(client);
+
+                VFormat(msg, 256, buffer, 2);
+                Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+
+                ProcessColorString(msg, 256);
+
+                Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+                if(SayText2 == null)
+                {
+                    LogError("StartMessageOne -> SayText2 is null");
+                    continue;
+                }
+
+                SayText2.SetInt("ent_idx", 0);
+                SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
+                SayText2.SetString("msg_name", msg);
+                SayText2.AddString("params", "");
+                SayText2.AddString("params", "");
+                SayText2.AddString("params", "");
+                SayText2.AddString("params", "");
+                EndMessage();
+            }
+        }
+
     SkipNextChatCS = false;
     SkipNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
