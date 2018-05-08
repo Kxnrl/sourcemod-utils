@@ -364,12 +364,12 @@ stock void Chat(int client, const char[] buffer, any ...)
     SkipNextPrefix = false;
 }
 
-stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any ...)
+stock void ChatEx(int[] clients, int numClients, const char[] buffer, any ...)
 {
-    Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    Protobuf SayText2 = view_as<Protobuf>(StartMessage("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> SayText2 is null");
         return;
     }
     
@@ -393,7 +393,7 @@ stock void ChatEx(const int[] clients, int numClients, const char[] buffer, any 
 
 stock void ChatTeam(int team, bool spec = true, const char[] buffer, any ...)
 {
-    int clients = new int [MAXPLAYERS+1];
+    int[] clients = new int [MAXPLAYERS+1];
     int total = 0;
     int iTeam = 0;
     
@@ -412,7 +412,7 @@ stock void ChatTeam(int team, bool spec = true, const char[] buffer, any ...)
 
 stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
 {
-    int clients = new int [MAXPLAYERS+1];
+    int[] clients = new int [MAXPLAYERS+1];
     int total = 0;
     int iTeam = 0;
     
@@ -487,10 +487,10 @@ stock void tChat(int client, const char[] buffer, any ...)
 
 stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
 {
-    int clients = new int [MAXPLAYERS+1];
+    int[] clients = new int [MAXPLAYERS+1];
     int total = 0;
     int iTeam = 0;
-    
+
     for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
         {
@@ -528,7 +528,7 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
 
 stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
 {
-    int clients = new int [MAXPLAYERS+1];
+    int[] clients = new int [MAXPLAYERS+1];
     int total = 0;
     int iTeam = 0;
     
@@ -1238,7 +1238,7 @@ stock int GetClientActiveWeapon(int client)
 
 
 /**************************
-            Misc
+            Overlay
 **************************/
 stock void PrepareOverlay(const char[] overlay)
 {
@@ -1305,7 +1305,7 @@ public Action Timer_RemoveOverlay(Handle timer, int userid)
 
 
 /**************************
-            Entity
+            Misc
 **************************/
 stock bool SetEntityParent(int child, int parent)
 {
