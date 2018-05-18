@@ -463,7 +463,7 @@ stock void tChat(int client, const char[] buffer, any ...)
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
         return;
     }
-    
+
     SetGlobalTransTarget(client);
 
     char msg[256];
@@ -487,10 +487,7 @@ stock void tChat(int client, const char[] buffer, any ...)
 
 stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
 {
-    int[] clients = new int [MAXPLAYERS+1];
-    int total = 0;
-    int iTeam = 0;
-
+    char msg[256];
     for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
         {
@@ -528,10 +525,9 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
 
 stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
 {
-    int[] clients = new int [MAXPLAYERS+1];
-    int total = 0;
     int iTeam = 0;
-    
+    char msg[256];
+
     for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
         {
