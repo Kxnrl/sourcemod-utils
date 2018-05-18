@@ -495,7 +495,7 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
             {
                 SetGlobalTransTarget(client);
 
-                VFormat(msg, 256, buffer, 2);
+                VFormat(msg, 256, buffer, 4);
                 Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
 
                 ProcessColorString(msg, 256);
@@ -536,7 +536,7 @@ stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
             {
                 SetGlobalTransTarget(client);
 
-                VFormat(msg, 256, buffer, 2);
+                VFormat(msg, 256, buffer, 4);
                 Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
 
                 ProcessColorString(msg, 256);
@@ -739,7 +739,7 @@ stock void TextAll(const char[] buffer, any ...)
     }
     
     char msg[256];
-    VFormat(msg, 256, buffer, 3);
+    VFormat(msg, 256, buffer, 2);
 
     TextMsg.SetInt("msg_dst", TextMsgDest); 
     TextMsg.AddString("params", msg);
