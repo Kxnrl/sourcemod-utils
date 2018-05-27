@@ -40,12 +40,7 @@ stock bool ClientIsKyle(int client)
 
 stock int GetKyleIndex()
 {
-    for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
-            if(GetSteamAccountID(client) == 88166525)
-                return client;
-
-    return -1;
+    return FindClientByAccount(88166525);
 }
 
 
@@ -69,6 +64,16 @@ stock bool ClientIsValid(int client, bool allowBot = false)
 stock bool ClientIsAlive(int client, bool allowBot = false)
 {
     return (ClientIsValid(client, allowBot) && IsPlayerAlive(client));
+}
+
+stock int FindClientByAccount(int account, bool validate = false)
+{
+    for(int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+            if(GetSteamAccountID(client) == account)
+                return client;
+
+    return -1;
 }
 
 stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool validate = false)
@@ -177,11 +182,11 @@ stock int GetClientAimTargetPos(int client, float pos[3])
 
 public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
 {
-	if(entity == client || entity > MaxClients || entity < MinClients)
+    if(entity == client || entity > MaxClients || entity < MinClients)
 
-		return false;
+        return false;
 
-	return true;
+    return true;
 }
 
 stock int GetTeamAlivePlayers(int team)
@@ -299,6 +304,28 @@ stock int CharToNumber(const int cNum)
     return (cNum >= '0' && cNum <= '9') ? (cNum - '0') : 0;
 }
 
+
+/**************************
+            Date
+**************************/
+stock int GetToday(int unix_timestamp = 0)
+{
+    char m_szDate[32];
+    FormatTime(m_szDate, 32, "%Y%m%d", unix_timestamp == 0 ? GetTime() : unix_timestamp);
+    return StringToInt(m_szDate);
+}
+
+stock int GetTodayHours(int unix_timestamp = 0)
+{
+    char m_szDate[32];
+    FormatTime(m_szDate, 32, "%H", unix_timestamp == 0 ? GetTime() : unix_timestamp);
+    return StringToInt(m_szDate);
+}
+
+stock void GetDate(int unix_timestamp = 0, const char[] format = "%Y/%m/%d %H:%M:%S", char[] buffer, int maxLen)
+{
+    FormatTime(buffer, maxLen, format, unix_timestamp == 0 ? GetTime() : unix_timestamp);
+}
 
 /**************************
             Chat
@@ -1112,7 +1139,7 @@ stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int
 /**************************
             Weapon
 **************************/
-stock void GetWeaponClassname(int weapon, int index = -1, char[] classname, int maxLen)
+stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int maxLen)
 {
     GetEdictClassname(weapon, classname, maxLen);
 
@@ -1121,16 +1148,28 @@ stock void GetWeaponClassname(int weapon, int index = -1, char[] classname, int 
 
     switch(index)
     {
-        case 60: strcopy(classname, maxLen, "weapon_m4a1_silencer");
-        case 61: strcopy(classname, maxLen, "weapon_usp_silencer");
-        case 63: strcopy(classname, maxLen, "weapon_cz75a");
-        case 64: strcopy(classname, maxLen, "weapon_revolver");
+        case 60 : return strcopy(classname, maxLen, "weapon_m4a1_silencer");
+        case 61 : return strcopy(classname, maxLen, "weapon_usp_silencer");
+        case 63 : return strcopy(classname, maxLen, "weapon_cz75a");
+        case 64 : return strcopy(classname, maxLen, "weapon_revolver");
+        case 500: return strcopy(classname, maxLen, "weapon_bayonet");
+        case 506: return strcopy(classname, maxLen, "weapon_knife_gut");
+        case 505: return strcopy(classname, maxLen, "weapon_knife_flip");
+        case 508: return strcopy(classname, maxLen, "weapon_knife_m9_bayonet");
+        case 507: return strcopy(classname, maxLen, "weapon_knife_karambit");
+        case 509: return strcopy(classname, maxLen, "weapon_knife_tactical");
+        case 515: return strcopy(classname, maxLen, "weapon_knife_butterfly");
+        case 512: return strcopy(classname, maxLen, "weapon_knife_falchion");
+        case 516: return strcopy(classname, maxLen, "weapon_knife_push");
+        case 514: return strcopy(classname, maxLen, "weapon_knife_survival_bowie");
     }
+    
+    return strlen(classname);
 }
 
 stock int GetPlayerWeaponEntity(int client, const char[] weapons)
 {
-    int m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
+    static int m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
     if(m_hMyWeapons == -1)
         ThrowNativeError(SP_ERROR_NATIVE, "CBasePlayer.m_hMyWeapons offset is not valid.");
 
