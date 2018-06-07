@@ -182,11 +182,7 @@ stock int GetClientAimTargetPos(int client, float pos[3])
 
 public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
 {
-    if(entity == client || entity > MaxClients || entity < MinClients)
-
-        return false;
-
-    return true;
+    return (entity == client || entity > MaxClients || entity < MinClients) ? false : true;
 }
 
 stock int GetTeamAlivePlayers(int team)
@@ -212,7 +208,7 @@ stock int GetPlayers(bool ingame = true, bool alive = false)
 
             total++;
         }
-    return players;
+    return total;
 }
 
 stock int GetPlayersEx(bool alive = false, int &tes, int &cts)
@@ -1125,14 +1121,14 @@ stock void EmitSoundOne(int client, const char[] sample, int entity = SOUND_FROM
 {
     char sound[256];
     FormatEx(sound, 256, "*%s", sample);
-    EmitSoundToClient(client, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
+    EmitSoundToClient(client, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
 stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
     FormatEx(sound, 256, "*%s", sample);
-    EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime)
+    EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
 
