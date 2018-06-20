@@ -362,17 +362,17 @@ stock void SMUtils_SkipNextPrefix()
 
 stock void Chat(int client, const char[] buffer, any ...)
 {
+    char msg[256];
+    VFormat(msg, 256, buffer, 3);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    ProcessColorString(msg, 256);
+
     Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
         return;
     }
-
-    char msg[256];
-    VFormat(msg, 256, buffer, 3);
-    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-    ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
     SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
@@ -389,18 +389,18 @@ stock void Chat(int client, const char[] buffer, any ...)
 
 stock void ChatEx(int[] clients, int numClients, const char[] buffer, any ...)
 {
+    char msg[256];
+    VFormat(msg, 256, buffer, 4);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    ProcessColorString(msg, 256);
+
     Protobuf SayText2 = view_as<Protobuf>(StartMessage("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> SayText2 is null");
         return;
     }
-    
-    char msg[256];
-    VFormat(msg, 256, buffer, 4);
-    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-    ProcessColorString(msg, 256);
-    
+
     SayText2.SetInt("ent_idx", 0);
     SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
     SayText2.SetString("msg_name", msg);
@@ -453,17 +453,17 @@ stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
 
 stock void ChatAll(const char[] buffer, any ...)
 {
+    char msg[256];
+    VFormat(msg, 256, buffer, 2);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    ProcessColorString(msg, 256);
+    
     Protobuf SayText2 = view_as<Protobuf>(StartMessageAll("SayText2", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> SayText2 is null");
         return;
     }
-    
-    char msg[256];
-    VFormat(msg, 256, buffer, 2);
-    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-    ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
     SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
@@ -480,19 +480,18 @@ stock void ChatAll(const char[] buffer, any ...)
 
 stock void tChat(int client, const char[] buffer, any ...)
 {
+    char msg[256];
+    SetGlobalTransTarget(client);
+    VFormat(msg, 256, buffer, 3);
+    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
+    ProcessColorString(msg, 256);
+
     Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(SayText2 == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
         return;
     }
-
-    SetGlobalTransTarget(client);
-
-    char msg[256];
-    VFormat(msg, 256, buffer, 3);
-    Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-    ProcessColorString(msg, 256);
 
     SayText2.SetInt("ent_idx", 0);
     SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
@@ -517,10 +516,8 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
             if((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
             {
                 SetGlobalTransTarget(client);
-
                 VFormat(msg, 256, buffer, 4);
                 Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-
                 ProcessColorString(msg, 256);
 
                 Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -558,10 +555,8 @@ stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
             if(iTeam == team || (spec && iTeam == 1))
             {
                 SetGlobalTransTarget(client);
-
                 VFormat(msg, 256, buffer, 4);
                 Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-
                 ProcessColorString(msg, 256);
 
                 Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -594,10 +589,8 @@ stock void tChatAll(const char[] buffer, any ...)
         if(ClientIsValid(client))
         {
             SetGlobalTransTarget(client);
-
             VFormat(msg, 256, buffer, 2);
             Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
-
             ProcessColorString(msg, 256);
 
             Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -652,17 +645,16 @@ stock void ProcessColorString(char[] message, int maxLen)
 **************************/
 stock void Hint(int client, const char[] buffer, any ...)
 {
+    char msg[256];
+    SetGlobalTransTarget(client);
+    VFormat(msg, 256, buffer, 3);
+    
     Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(HintText == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> HintText is null");
         return;
     }
-
-    SetGlobalTransTarget(client);
-
-    char msg[256];
-    VFormat(msg, 256, buffer, 3);
 
     HintText.SetString("text", msg);
 
@@ -673,15 +665,16 @@ stock void Hint(int client, const char[] buffer, any ...)
 
 stock void HintAll(const char[] buffer, any ...)
 {
+    char msg[256];
+    VFormat(msg, 256, buffer, 2);
+    
     Protobuf HintText = view_as<Protobuf>(StartMessageAll("HintText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(HintText == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> HintText is null");
         return;
     }
-    
-    char msg[256];
-    VFormat(msg, 256, buffer, 2);
+
     HintText.SetString("text", msg);
     EndMessage();
 }
@@ -692,16 +685,15 @@ stock void tHintAll(const char[] buffer, any ...)
     for(int client = 1; client <= MaxClients; ++client)
         if(ClientIsValid(client))
         {
+            SetGlobalTransTarget(client);
+            VFormat(msg, 256, buffer, 2);
+
             Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
             if(HintText == null)
             {
                 LogError("StartMessageOne -> HintText is null");
                 continue;
             }
-            
-            SetGlobalTransTarget(client);
-
-            VFormat(msg, 256, buffer, 2);
 
             HintText.SetString("text", msg);
 
@@ -728,17 +720,16 @@ stock void SMUtils_SetTextDest(int val)
 
 stock void Text(int client, const char[] buffer, any ...)
 {
+    char msg[256];
+    SetGlobalTransTarget(client);
+    VFormat(msg, 256, buffer, 3);
+    
     Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(TextMsg == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> TextMsg is null");
         return;
     }
-
-    SetGlobalTransTarget(client);
-
-    char msg[256];
-    VFormat(msg, 256, buffer, 3);
 
     TextMsg.SetInt("msg_dst", TextMsgDest); 
     TextMsg.AddString("params", msg);
@@ -754,15 +745,15 @@ stock void Text(int client, const char[] buffer, any ...)
 
 stock void TextAll(const char[] buffer, any ...)
 {
+    char msg[256];
+    VFormat(msg, 256, buffer, 2);
+    
     Protobuf TextMsg = view_as<Protobuf>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     if(TextMsg == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> TextMsg is null");
         return;
     }
-    
-    char msg[256];
-    VFormat(msg, 256, buffer, 2);
 
     TextMsg.SetInt("msg_dst", TextMsgDest); 
     TextMsg.AddString("params", msg);
@@ -780,16 +771,15 @@ stock void tTextAll(const char[] buffer, any ...)
     for(int client = 1; client <= MaxClients; ++client)
         if(ClientIsValid(client))
         {
+            SetGlobalTransTarget(client);
+            VFormat(msg, 256, buffer, 3);
+            
             Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
             if(TextMsg == null)
             {
                 LogError("StartMessageOne -> TextMsg is null");
                 continue;
             }
-
-            SetGlobalTransTarget(client);
-
-            VFormat(msg, 256, buffer, 3);
 
             TextMsg.SetInt("msg_dst", TextMsgDest); 
             TextMsg.AddString("params", msg);
