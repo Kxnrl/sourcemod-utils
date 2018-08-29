@@ -35,12 +35,18 @@
 **************************/
 stock bool ClientIsKyle(int client)
 {
-    return (GetSteamAccountID(client) == 88166525);
+    int account = GetSteamAccountID(client);
+    return (account == 88166525 || account == 6678492);
 }
 
 stock int GetKyleIndex()
 {
     return FindClientByAccount(88166525);
+}
+
+stock int GetKyleIndex2()
+{
+    return FindClientByAccount(6678492);
 }
 
 
@@ -639,6 +645,49 @@ stock void ProcessColorString(char[] message, int maxLen)
     ReplaceString(message, maxLen, "{darkorange}",  "\x0F", false);
 }
 
+stock void RemoveAllColors(char[] message, int maxLen)
+{
+    ReplaceString(message, maxLen, "{normal}", "", false);
+    ReplaceString(message, maxLen, "{default}", "", false);
+    ReplaceString(message, maxLen, "{white}", "", false);
+    ReplaceString(message, maxLen, "{darkred}", "", false);
+    ReplaceString(message, maxLen, "{teamcolor}", "", false);
+    ReplaceString(message, maxLen, "{pink}", "", false);
+    ReplaceString(message, maxLen, "{green}", "", false);
+    ReplaceString(message, maxLen, "{HIGHLIGHT}", "", false);
+    ReplaceString(message, maxLen, "{lime}", "", false);
+    ReplaceString(message, maxLen, "{lightgreen}", "", false);
+    ReplaceString(message, maxLen, "{lime}", "", false);
+    ReplaceString(message, maxLen, "{lightred}", "", false);
+    ReplaceString(message, maxLen, "{red}", "", false);
+    ReplaceString(message, maxLen, "{gray}", "", false);
+    ReplaceString(message, maxLen, "{grey}", "", false);
+    ReplaceString(message, maxLen, "{olive}", "", false);
+    ReplaceString(message, maxLen, "{yellow}", "", false);
+    ReplaceString(message, maxLen, "{orange}", "", false);
+    ReplaceString(message, maxLen, "{silver}", "", false);
+    ReplaceString(message, maxLen, "{lightblue}", "", false);
+    ReplaceString(message, maxLen, "{blue}", "", false);
+    ReplaceString(message, maxLen, "{purple}", "", false);
+    ReplaceString(message, maxLen, "{darkorange}", "", false);
+    ReplaceString(message, maxLen, "\x01", "", false);
+    ReplaceString(message, maxLen, "\x02", "", false);
+    ReplaceString(message, maxLen, "\x03", "", false);
+    ReplaceString(message, maxLen, "\x04", "", false);
+    ReplaceString(message, maxLen, "\x05", "", false);
+    ReplaceString(message, maxLen, "\x06", "", false);
+    ReplaceString(message, maxLen, "\x07", "", false);
+    ReplaceString(message, maxLen, "\x08", "", false);
+    ReplaceString(message, maxLen, "\x09", "", false);
+    ReplaceString(message, maxLen, "\x10", "", false);
+    ReplaceString(message, maxLen, "\x0A", "", false);
+    ReplaceString(message, maxLen, "\x0B", "", false);
+    ReplaceString(message, maxLen, "\x0C", "", false);
+    ReplaceString(message, maxLen, "\x0D", "", false);
+    ReplaceString(message, maxLen, "\x0E", "", false);
+    ReplaceString(message, maxLen, "\x0F", "", false);
+}
+
 
 /**************************
             Hint
@@ -672,6 +721,22 @@ stock void HintAll(const char[] buffer, any ...)
     if(HintText == null)
     {
         ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> HintText is null");
+        return;
+    }
+
+    HintText.SetString("text", msg);
+    EndMessage();
+}
+
+stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
+{
+    char msg[256];
+    VFormat(msg, 256, buffer, 3);
+
+    Protobuf HintText = view_as<Protobuf>(StartMessage("HintText", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    if(HintText == null)
+    {
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> HintText is null");
         return;
     }
 
@@ -772,8 +837,8 @@ stock void tTextAll(const char[] buffer, any ...)
         if(ClientIsValid(client))
         {
             SetGlobalTransTarget(client);
-            VFormat(msg, 256, buffer, 3);
-            
+            VFormat(msg, 256, buffer, 2);
+
             Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
             if(TextMsg == null)
             {
@@ -1155,9 +1220,12 @@ stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int m
 
 stock int GetPlayerWeaponEntity(int client, const char[] weapons)
 {
-    static int m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
+    static int m_hMyWeapons = -1;
     if(m_hMyWeapons == -1)
-        ThrowNativeError(SP_ERROR_NATIVE, "CBasePlayer.m_hMyWeapons offset is not valid.");
+    {
+        m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
+        if(m_hMyWeapons == -1) ThrowError("CBasePlayer.m_hMyWeapons offset is not valid.");
+    }
 
     for(int offset = 0; offset < 128; offset += 4)
     {
@@ -1166,7 +1234,7 @@ stock int GetPlayerWeaponEntity(int client, const char[] weapons)
         if(IsValidEdict(weapon))
         {
             char classname[32];
-            GetWeaponClassname(weapon, -1, classname, 32);
+            GetEdictClassname(weapon, classname, 32);
 
             if(strcmp(weapons, classname, false) == 0)
                 return weapon;
@@ -1219,10 +1287,7 @@ stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
 {
     int amtype = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
     if(amtype == -1)
-        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d -> m_iPrimaryAmmoType is -1.", weapon);
-    
-    if(!HasEntProp(weapon, Prop_Send, "m_iAmmo"))
-        ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iAmmo Props.", weapon);
+        ThrowError("Weapon %d -> m_iPrimaryAmmoType is -1.", weapon);
 
     SetEntProp(client, Prop_Send, "m_iAmmo", ammo, _, amtype);
 }
@@ -1354,7 +1419,7 @@ stock bool SetEntityParentEx(int child, int parent, const char[] attchment, cons
 
 stock bool SelfKillEntity(int entity, float delay = 0.0)
 {
-    if(IsValidEntity(entity))
+    if(!IsValidEntity(entity))
         return true;
 
     char input[128];
@@ -1365,7 +1430,7 @@ stock bool SelfKillEntity(int entity, float delay = 0.0)
 
 stock bool SelfKillEntityEx(int entity, float delay = 0.0)
 {
-    if(IsValidEntity(entity))
+    if(!IsValidEntity(entity))
         return true;
 
     char input[128];
