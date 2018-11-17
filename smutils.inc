@@ -21,7 +21,7 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.0+22"
+#define SMUtils_Version "1.0"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://kxnrl.com/git/SMUtils"
 
@@ -195,7 +195,7 @@ stock int GetTeamAlivePlayers(int team)
 {
     int total = 0;
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsAlive(client) && GetClientTeam(team))
+        if(ClientIsAlive(client) && GetClientTeam(team) == team)
             total++;
     return total;
 }
