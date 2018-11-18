@@ -2,18 +2,31 @@
 
 public void OnPluginStart()
 {
-    char buffer[32];
-    Handle hndl;
-    float pos[3];
-    
-    // Global
-    ClientIsKyle(0);
-    GetKyleIndex();
-    
-    // Client
-    ClientIsValid(0);
-    ClientIsAlive(0);
-    FindClientBySteamId(AuthId_Steam2, "steamid");
+    char chars[32];
+    bool boolean;
+    Handle handle;
+    float decimal;
+    float float3[3];
+    int integer;
+    int[] integers = new int [65];
+
+    /**************************
+                Global
+    **************************/
+    boolean = ClientIsKyle(0);
+    integer = GetKyleIndex();
+
+    /**************************
+                Client
+    **************************/
+    boolean = ClientIsValid(0);
+    boolean = ClientIsAlive(0);
+    integer = FindClientByAccount(0);
+    integer = FindClientBySteamId(AuthId_SteamID64, "76561198048432253");
+    integer = GetRandomClient(false, 0);
+    boolean = HasClientUserFlags(0, ADMFLAG_ROOT);
+    boolean = HasClientAdminFlags(0, Admin_Root);
+
     SetClientFrags(0, 0);
     SetClientDeaths(0, 0);
     SetClientMoney(0, 0);
@@ -21,88 +34,149 @@ public void OnPluginStart()
     SetClientHelmet(0, false);
     SetClientHud(0, 0);
     SetClientWallHack(0, 0.0);
-    GetClientAimTargetPos(0, pos);
-    GetRandomClient(true);
-    HasClientUserFlags(0, ADMFLAG_ROOT);
-    HasClientAdminFlags(0, Admin_Root);
-    
-    
-    // SteamId
-    ConvertSteam64ToSteam32("sasusi nm$l", buffer, 32);
+    GetClientAimTargetPos(0, float3);
 
-    // Chat
-    SMUtils_SetChatPrefix("nm$l");
-    SMUtils_SetChatSpaces("    ");
+    integer = GetTeamPlayers(0, false);
+    integer = GetPlayers(false, false);
+    integer = GetPlayersEx(true, integer, integer);
+
+    integer = ConvertSteam64ToSteam32("76561198048432253", chars, 32);
+    integer = NumberToChar(0);
+    integer = CharToNumber(0);
+
+    /**************************
+                Date
+    **************************/
+    integer = GetToday();
+    integer = GetTodayHours();
+
+    GetDate(0, "%Y/%m/%d %H:%M:%S", chars, 32);
+
+    /**************************
+                Chat
+    **************************/
+    SMUtils_SetChatPrefix("[\x04SM\x01]");
+    SMUtils_SetChatSpaces("            ");
     SMUtils_SetChatConSnd(true);
-    SMUtils_StopNextChatCS();
-    Chat(0, "sasusi nm$l -> %d", 19990420);
-    ChatAll("sasusi nm$l -> %d", 19990420);
-    tChat(0, "sasusi nm$l -> %d", 19990420);
-    tChatAll("sasusi nm$l -> %d", 19990420);
-    
-    // Hint
-    Hint(0, "sasusi nm$l -> %d", 19990420);
-    HintAll("sasusi nm$l -> %d", 19990420);
-    tHintAll("sasusi nm$l -> %d", 19990420);
-    
-    // TextMsg
+
+    SMUtils_SkipNextChatCS();
+    SMUtils_SkipNextPrefix();
+
+    Chat(0, "SMUtils");
+    ChatEx(integers, 0, "SMUtils: %s", SMUtils_Version);
+    ChatTeam(0, false, "SMUtils: %s", SMUtils_Version);
+    ChatAlive(true, true, "SMUtils: %s", SMUtils_Version);
+    ChatAll("SMUtils: %s", SMUtils_Version);
+    tChat(0, "SMUtils: %s", SMUtils_Version);
+    tChatAlive(true, true, "SMUtils: %s", SMUtils_Version);
+    tChatTeam(0, false, "SMUtils: %s", SMUtils_Version);
+    tChatAll("SMUtils: %s", SMUtils_Version);
+    ProcessColorString(chars, 32);
+    RemoveAllColors(chars, 32);
+
+    /**************************
+                Hint
+    **************************/
+    Hint(0, "SMUtils: %s", SMUtils_Version);
+    HintAll("SMUtils: %s", SMUtils_Version);
+    HintEx(integers, 0, "SMUtils: %s", SMUtils_Version);
+    tHintAll("SMUtils: %s", SMUtils_Version);
+
+    /**************************
+                TextMsg
+    **************************/
     SMUtils_SetTextDest(HUD_PRINTCENTER);
-    Text(0, "sasusi nm$l -> %d", 19990420);
-    TextAll("sasusi nm$l -> %d", 19990420);
-    tTextAll("sasusi nm$l -> %d", 19990420);
-    
-    // Instructor Hud
-    InstructorHud hud = new InstructorHud("sasusi nm$l, fuck you all");
-    hud.EasyInit();
-    hud.target = 1;
-    hud.color(59, 197, 187);
-    hud.positioning = false;
-    hud.invisible = true;
-    hud.forcecaption = false;
-    hud.show_offscreen = false;
-    hud.range = 1000.0;
-    hud.offset = 1.0;
-    hud.pulseoption = 0;
-    hud.alphaoption = 0;
-    hud.shakeoption = 0;
-    hud.timeout = 5.0;
-    hud.Display(0, "sasusi nm$l, go fuck urself -> %d", 19990420);
-    hud.DisplayAll("sasusi nm$l, go fuck urself -> %d", 19990420);
-    hud.tDisplay(0, "sasusi nm$l, go fuck urself -> %d", 19990420);
-    hud.tDisplayAll("sasusi nm$l, go fuck urself -> %d", 19990420);
-    hud.Destroy();
+    Text(0, "SMUtils: %s", SMUtils_Version);
+    TextAll("SMUtils: %s", SMUtils_Version);
+    TextEx(integers, 0, "SMUtils: %s", SMUtils_Version);
+    tTextAll("SMUtils: %s", SMUtils_Version);
 
-    EasyMissionHint(0, "sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
-    EasyMissionHintAll("sasusi nm$l, fuck you all", 10.0, Icon_skull, 255, 0, 0);
-    
-    // Sound
-    PrepareSound("sanshengshi/nimasile.mp3");
-    int[] clients = new int [MaxClients];
-    EmitSoundEx(clients, MaxClients, "sanshengshi/nimasile.mp3");
-    EmitSoundOne(0, "sanshengshi/nimasile.mp3");
-    EmitSoundAll("sanshengshi/nimasile.mp3");
-    
-    // Weapon
-    GetWeaponClassname(0, -1, buffer, 32);
-    GetPlayerWeaponEntity(0, "sasusi_nm$l");
-    RemoveWeaponByClassname(0, "sasusi_nm$l");
-    RemoveWeapon(0, 1);
-    SetWeaponClip(0, 1);
-    SetWeaponAmmo(0, 1);
-    SetWeaponAmmoEx(1, 2, 3);
-    
-    // Overlay
-    PrepareOverlay("sasusi/nmsl");
-    Overlay(0, "sasusi/nmsl");
-    OverlayAll("sasusi/nmsl", 5.0);
+    /**************************
+            MissionHint
+    **************************/
+    InstructorHud hint = new InstructorHud();
+    hint.target = 0;
+    hint.flags = 0;
+    hint.activator_userid = 0;
+    hint.positioning = false;
+    hint.invisible = false;
+    hint.forcecaption = false;
+    hint.icon_onscreen = Icon_bulb;
+    hint.icon_offscreen = Icon_bulb;
+    hint.show_offscreen = false;
+    hint.range = 0.0;
+    hint.timeout = 0.0;
+    hint.offset = 0.0;
+    hint.pulseoption = 0;
+    hint.alphaoption = 0;
+    hint.shakeoption = 0;
+    hint.color(0, 0, 0);
+    hint.EasyInit();
+    hint.Display(0, "SMUtils: %s", SMUtils_Version);
+    hint.DisplayAll("SMUtils: %s", SMUtils_Version);
+    hint.tDisplayAll("SMUtils: %s", SMUtils_Version);
+    hint.Destroy();
 
-    // Misc
-    FreeHandle(hndl);
-    StopTimer(hndl);
-    RemoveEntityEx(0);
-    RemoveEdictEx(0);
-    RandomInt(1);
-    RandomFloat();
-    RandomString(buffer, 32);
-    RandomStringEx("sasusi_nm$l", buffer, 32);
+    EasyMissionHint(0, 0.0, Icon_bulb, 255, 255, 255, "SMUtils: %s", SMUtils_Version);
+    EasyMissionHintAll(0.0, Icon_bulb, 255, 255, 255, "SMUtils: %s", SMUtils_Version);
+
+    /**************************
+                Sound
+    **************************/
+    PrepareSound("kyle/tekken7/voice/kazumi.mp3");
+    EmitSoundEx(integers, 0, "kyle/tekken7/voice/kazumi.mp3");
+    EmitSoundOne(0, "kyle/tekken7/voice/kazumi.mp3");
+    EmitSoundAll("kyle/tekken7/voice/kazumi.mp3");
+
+    /**************************
+                Weapon
+    **************************/
+    integer = GetWeaponClassname(0, -1, chars, 32);
+    integer = GetPlayerWeaponEntity(0, "weapon_slash");
+    boolean = RemoveWeaponByClassname(0, "weapon_slash");
+    boolean = RemoveWeapon(0, 0);
+    integer = GetClientActiveWeapon(0);
+
+    SetWeaponClip(0, 0);
+    SetWeaponAmmo(0, 0);
+    SetWeaponAmmoEx(0, 0, 0);
+    StripWeapon(0, true);
+    StripWeaponAll();
+
+    /**************************
+                Overlay
+    **************************/
+    PrepareOverlay("kyle/overlay/tekken7/win");
+    Overlay(0, "kyle/overlay/tekken7/win", 5.0);
+    OverlayAll("kyle/overlay/tekken7/win", 5.0);
+
+    /**************************
+                Entity
+    **************************/
+    boolean = SetEntityParent(0, 0);
+    boolean = SetEntityParentEx(0, 0, "facemask", float3);
+    boolean = SelfKillEntity(0, 0.0);
+    boolean = SelfKillEntityEx(0, 0.0);
+
+    RemoveEntityEx(0, 0.0);
+    RemoveEdictEx(0, 0.0);
+
+    /**************************
+                Misc
+    **************************/
+    FreeHandle(handle);
+    StopTimer(handle);
+
+    integer = RandomInt();
+    decimal = RandomFloat();
+
+    RandomString(chars, 32);
+    RandomStringEx("hwlifeauhjflk.wrygajkikr,ybajwfkewaotghawr", chars, 32);
+
+    StringToLower("StringToLower", chars, 32);
+    StringToUpper("StringToUpper", chars, 32);
+    
+    assert(decimal);
+    assert(boolean);
+    assert(integer);
 }

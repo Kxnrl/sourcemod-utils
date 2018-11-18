@@ -21,9 +21,9 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.0"
+#define SMUtils_Version "1.1"
 #define SMUtils_Author  "Kyle"
-#define SMUtils_URL     "https://kxnrl.com/git/SMUtils"
+#define SMUtils_URL     "https://github.com/Kxnrl/sourcemod-utils"
 
 #define CONSOLE    0
 #define MinClients 1
@@ -44,11 +44,6 @@ stock int GetKyleIndex()
     return FindClientByAccount(88166525);
 }
 
-stock int GetKyleIndex2()
-{
-    return FindClientByAccount(6678492);
-}
-
 
 /**************************
             Client
@@ -57,6 +52,9 @@ stock bool ClientIsValid(int client, bool allowBot = false)
 {
     if(client > MaxClients || client < MinClients)
         return false;
+    
+    if(!IsClientConnected(client))
+        return false;
 
     if(!IsClientInGame(client))
         return false;
@@ -64,12 +62,12 @@ stock bool ClientIsValid(int client, bool allowBot = false)
     if(IsClientSourceTV(client) || IsClientReplay(client))
         return false;
 
-    return (allowBot || !IsFakeClient(client));
+    return (!IsFakeClient(client)) || allowBot;
 }
 
 stock bool ClientIsAlive(int client, bool allowBot = false)
 {
-    return (ClientIsValid(client, allowBot) && IsPlayerAlive(client));
+    return ClientIsValid(client, allowBot) && IsPlayerAlive(client);
 }
 
 stock int FindClientByAccount(int account, bool validate = false)
@@ -175,28 +173,33 @@ stock int GetClientAimTargetPos(int client, float pos[3])
     GetClientEyePosition(client,fOrg);
     GetClientEyeAngles(client, fAgl);
 
-    Handle trace = TR_TraceRayFilterEx(fOrg, fAgl, MASK_SHOT, RayType_Infinite, TraceFilterAllEntities, client);
+    Handle trace = TR_TraceRayFilterEx(fOrg, fAgl, MASK_SHOT, RayType_Infinite, TraceFilterAllEntities_smuils_TFAE, client);
 
     TR_GetEndPosition(pos, trace);
 
     int entity = TR_GetEntityIndex(trace);
 
-    CloseHandle(trace);
+    delete trace;
 
     return entity;
 }
 
-public bool TraceFilterAllEntities(int entity, int contentsMask, int client)
+public bool TraceFilterAllEntities_smuils_TFAE(int entity, int contentsMask, int client)
 {
     return (entity == client || entity > MaxClients || entity < MinClients) ? false : true;
 }
 
-stock int GetTeamAlivePlayers(int team)
+stock int GetTeamPlayers(int team, bool alive = false)
 {
     int total = 0;
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsAlive(client) && GetClientTeam(team) == team)
+        if(ClientIsValid(client) && GetClientTeam(team) == team)
+        {
+            if(alive && !IsPlayerAlive(client))
+                continue;
+            
             total++;
+        }
     return total;
 }
 
@@ -209,7 +212,7 @@ stock int GetPlayers(bool ingame = true, bool alive = false)
             if(ingame && !IsClientInGame(client))
                 continue;
             
-            if(alive && !IsPlayerAlive(client))
+            if(alive && IsClientInGame(client) && !IsPlayerAlive(client))
                 continue;
 
             total++;
@@ -246,6 +249,12 @@ stock int GetPlayersEx(bool alive = false, int &tes, int &cts)
 **************************/
 stock int ConvertSteam64ToSteam32(const char[] steamId64, char[] steamId32, int maxLen)
 {
+    if(strlen(steamId64) != 17 || StrContains(steamId64, "765611", false) != 0)
+    {
+        ThrowNativeError(SP_ERROR_PARAM, "ConvertSteam64ToSteam32 -> Invalid steamId64 given. -> %s", steamId64);
+        return -1;
+    }
+
     char[] m_szBase = "76561197960265728";
     char m_szAuth[18], m_szAccount[18];
     int m_iBorrow, m_iTemp, m_iSteamId[2];
@@ -443,8 +452,7 @@ stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
 {
     int[] clients = new int [MAXPLAYERS+1];
     int total = 0;
-    int iTeam = 0;
-    
+
     for(int client = 1; client <= MaxClients; client++)
         if(ClientIsValid(client))
         {
@@ -830,6 +838,28 @@ stock void TextAll(const char[] buffer, any ...)
     EndMessage();
 }
 
+stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
+{
+    char msg[256];
+    VFormat(msg, 256, buffer, 3);
+
+    Protobuf TextMsg = view_as<Protobuf>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    if(TextMsg == null)
+    {
+        ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> TextMsg is null");
+        return;
+    }
+
+    TextMsg.SetInt("msg_dst", TextMsgDest); 
+    TextMsg.AddString("params", msg);
+    TextMsg.AddString("params", "");
+    TextMsg.AddString("params", "");
+    TextMsg.AddString("params", "");
+    TextMsg.AddString("params", "");
+
+    EndMessage();
+}
+
 stock void tTextAll(const char[] buffer, any ...)
 {
     char msg[256];
@@ -1013,7 +1043,7 @@ methodmap InstructorHud < Event
         this.SetString("hint_color", clr);
     }
 
-    public InstructorHud(const char[] name, int target = 0)
+    public InstructorHud(const char[] name = "", int target = 0)
     {
         Event e = CreateEvent("instructor_server_hint_create", true);
         if(e == null)
@@ -1112,25 +1142,29 @@ methodmap InstructorHud < Event
     }
 }
 
-stock void EasyMissionHint(int client, const char[] caption, float holdtime, InstructorHud_Icon icon, int r, int g, int b)
+stock void EasyMissionHint(int client, float holdtime, InstructorHud_Icon icon, int r, int g, int b, const char[] caption, any ...)
 {
     InstructorHud hint = new InstructorHud("");
     hint.EasyInit();
     hint.color(r, g, b);
     hint.timeout = holdtime;
     hint.icon_onscreen = icon;
-    hint.Display(client, caption);
+    char msg[256];
+    VFormat(msg, 256, caption, 8);
+    hint.Display(client, msg);
     hint.Destroy();
 }
 
-stock void EasyMissionHintAll(const char[] caption, float holdtime, InstructorHud_Icon icon, int r, int g, int b)
+stock void EasyMissionHintAll(float holdtime, InstructorHud_Icon icon, int r, int g, int b, const char[] caption, any ...)
 {
     InstructorHud hint = new InstructorHud("");
     hint.EasyInit();
     hint.color(r, g, b);
     hint.timeout = holdtime;
     hint.icon_onscreen = icon;
-    hint.DisplayAll(caption);
+    char msg[256];
+    VFormat(msg, 256, caption, 7);
+    hint.DisplayAll(msg);
     hint.Destroy();
 }
 
@@ -1244,10 +1278,10 @@ stock int GetPlayerWeaponEntity(int client, const char[] weapons)
     return -1;
 }
 
-stock int RemoveWeaponByClassname(int client, const char[] weapons)
+stock bool RemoveWeaponByClassname(int client, const char[] weapons)
 {
     int weapon = GetPlayerWeaponEntity(client, weapons);
-    return (weapon != -1) ? view_as<int>(RemoveWeapon(client, weapon)) : weapon;
+    return (weapon != -1) ? RemoveWeapon(client, weapon) : false;
 }
 
 stock bool RemoveWeapon(int client, int weapon)
@@ -1357,7 +1391,7 @@ stock void Overlay(int client, const char[] overlay, float holdtime = 0.0)
     ClientCommand(client, "r_screenoverlay \"%s.vtf\"", overlay);
 
     if(holdtime >= 0.0)
-        CreateTimer(holdtime, Timer_RemoveOverlay, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+        CreateTimer(holdtime, Timer_RemoveOverlay_smutils_overlay, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock void OverlayAll(const char[] overlay, float holdtime = 0.0)
@@ -1367,10 +1401,10 @@ stock void OverlayAll(const char[] overlay, float holdtime = 0.0)
             ClientCommand(client, "r_screenoverlay \"%s.vtf\"", overlay);
 
     if(holdtime >= 0.0)
-        CreateTimer(holdtime, Timer_RemoveOverlay, -1, TIMER_FLAG_NO_MAPCHANGE);
+        CreateTimer(holdtime, Timer_RemoveOverlay_smutils_overlay, -1, TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_RemoveOverlay(Handle timer, int userid)
+public Action Timer_RemoveOverlay_smutils_overlay(Handle timer, int userid)
 {
     if(userid == -1)
     {
@@ -1391,7 +1425,7 @@ public Action Timer_RemoveOverlay(Handle timer, int userid)
 
 
 /**************************
-            Misc
+            Entity
 **************************/
 stock bool SetEntityParent(int child, int parent)
 {
@@ -1411,7 +1445,7 @@ stock bool SetEntityParentEx(int child, int parent, const char[] attchment, cons
 
     float fPos[3];
     GetEntPropVector(parent, Prop_Send, "m_vecOrigin", fPos);
-    AddVectors(parent, offset, parent);
+    AddVectors(fPos, offset, fPos);
     TeleportEntity(child, fPos, NULL_VECTOR, NULL_VECTOR);
 
     return AcceptEntityInput(child, "SetParentAttachmentMaintainOffset", parent, child);
@@ -1450,7 +1484,7 @@ stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
         return;
     }
 
-    CreateTimer(delay, Timer_DestroyEntity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+    CreateTimer(delay, Timer_DestroyEntity_smutils_removeentity, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock void RemoveEdictEx(int edict, float delay = 0.0)
@@ -1465,10 +1499,10 @@ stock void RemoveEdictEx(int edict, float delay = 0.0)
         return;
     }
 
-    CreateTimer(delay, Timer_DestroyEdict, EntIndexToEntRef(edict), TIMER_FLAG_NO_MAPCHANGE);
+    CreateTimer(delay, Timer_DestroyEdict_smutils_removeedice, EntIndexToEntRef(edict), TIMER_FLAG_NO_MAPCHANGE);
 }
 
-public Action Timer_DestroyEntity(Handle timer, int entRef)
+public Action Timer_DestroyEntity_smutils_removeentity(Handle timer, int entRef)
 {
     int entity = EntRefToEntIndex(entRef);
     if(IsValidEntity(entity))
@@ -1480,7 +1514,7 @@ public Action Timer_DestroyEntity(Handle timer, int entRef)
     return Plugin_Stop;
 }
 
-public Action Timer_DestroyEdict(Handle timer, int edictRef)
+public Action Timer_DestroyEdict_smutils_removeedice(Handle timer, int edictRef)
 {
     int edict = EntRefToEntIndex(edictRef);
     if(IsValidEdict(edict))
