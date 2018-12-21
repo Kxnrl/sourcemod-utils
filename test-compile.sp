@@ -157,6 +157,10 @@ public void OnPluginStart()
     boolean = SetEntityParentEx(0, 0, "facemask", float3);
     boolean = SelfKillEntity(0, 0.0);
     boolean = SelfKillEntityEx(0, 0.0);
+    boolean = SetTextureIndex(0, 0, 0.0);
+    integer = GetEntityHammerID(0);
+    integer = GetEntityParentName(0);
+    integer = GetEntityTargetName(0, chars, 32);
 
     RemoveEntityEx(0, 0.0);
     RemoveEdictEx(0, 0.0);

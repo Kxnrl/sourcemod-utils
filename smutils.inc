@@ -30,6 +30,11 @@
 
 #include <sdktools>
 
+#if !defined DMG_HEADSHOT
+    #define DMG_HEADSHOT (1 << 31)
+#endif
+
+
 /**************************
             Global
 **************************/
@@ -67,7 +72,19 @@ stock bool ClientIsValid(int client, bool allowBot = false)
 
 stock bool ClientIsAlive(int client, bool allowBot = false)
 {
-    return ClientIsValid(client, allowBot) && IsPlayerAlive(client);
+    if(client > MaxClients || client < MinClients)
+        return false;
+
+    if(!IsClientInGame(client))
+        return false;
+
+    if(IsClientSourceTV(client) || IsClientReplay(client))
+        return false;
+    
+    if(!allowBot && IsFakeClient(client))
+        return false;
+
+    return IsPlayerAlive(client);
 }
 
 stock int FindClientByAccount(int account, bool validate = false)
@@ -1226,7 +1243,8 @@ stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int
 **************************/
 stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int maxLen)
 {
-    GetEdictClassname(weapon, classname, maxLen);
+    if(!GetEdictClassname(weapon, classname, maxLen))
+        return -1;
 
     if(index == -1)
         index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
@@ -1451,7 +1469,7 @@ stock bool SetEntityParentEx(int child, int parent, const char[] attchment, cons
     return AcceptEntityInput(child, "SetParentAttachmentMaintainOffset", parent, child);
 }
 
-stock bool SelfKillEntity(int entity, float delay = 0.0)
+stock bool SelfKillEntity(int entity, float delay = 0.1)
 {
     if(!IsValidEntity(entity))
         return true;
@@ -1525,6 +1543,47 @@ public Action Timer_DestroyEdict_smutils_removeedice(Handle timer, int edictRef)
     }
 
     return Plugin_Stop;
+}
+
+stock bool SetTextureIndex(int entity, int index, float delay = 0.1)
+{
+    char targetname[32];
+    GetEntityTargetName(entity, targetname, 32);
+    if(strlen(targetname) < 3)
+    {
+        RandomString(targetname, 32);
+        DispatchKeyValue(entity, "targetname", targetname);
+    }
+    
+    int toggle = CreateEntityByName("env_texturetoggle");
+    if(toggle == -1)
+        return false;
+    
+    DispatchKeyValue(toggle, "target", targetname);
+    DispatchSpawn(toggle);
+    
+    if(!SelfKillEntity(toggle, delay + 0.5))
+        return false;
+
+    char input[32];
+    FormatEx(input, 32, "OnUser3 !self:SetTextureIndex:%d:%.2f:1", index, delay);
+    SetVariantString(input);
+    return (AcceptEntityInput(entity, "AddOutput") && AcceptEntityInput(entity, "FireUser3"));
+}
+
+stock int GetEntityHammerID(int entity)
+{
+    return GetEntProp(entity, Prop_Data, "m_iHammerID");
+}
+
+stock int GetEntityTargetName(int entity, char[] buffer, int size)
+{
+    return GetEntPropString(entity, Prop_Data, "m_iName", buffer, size);
+}
+
+stock int GetEntityParentName(int entity, char[] buffer, int size)
+{
+    return GetEntPropString(entity, Prop_Data, "m_iParent", buffer, size);
 }
 
 
