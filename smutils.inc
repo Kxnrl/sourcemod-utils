@@ -21,14 +21,16 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.1"
+#define SMUtils_Version "1.2.1"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://github.com/Kxnrl/sourcemod-utils"
 
 #define CONSOLE    0
 #define MinClients 1
 
+#undef REQUIRE_EXTENSIONS
 #include <sdktools>
+#define REQUIRE_EXTENSIONS
 
 #if !defined DMG_HEADSHOT
     #define DMG_HEADSHOT (1 << 31)
@@ -363,6 +365,28 @@ static char ChatSpaces[32] = "   ";
 static bool ChatConSnd     = true;
 static bool SkipNextChatCS = false;
 static bool SkipNextPrefix = false;
+static bool ReplaceColorEx = false;
+static UserMessageType UMType = UM_Protobuf;
+static EngineVersion GameEngine = Engine_CSGO;
+
+stock void SMUitls_InitUserMessage()
+{
+    UMType = GetUserMessageType();
+    GameEngine = GetEngineVersion();
+
+    if(GameEngine == Engine_Insurgency || GameEngine == Engine_Left4Dead2)
+    {
+        ReplaceColorEx = true;
+    }
+    else if(GameEngine == Engine_CSGO)
+    {
+        ReplaceColorEx = false;
+    }
+    else
+    {
+        SetFailState("Current Engine not suppoirted");
+    }
+}
 
 stock int SMUtils_SetChatPrefix(const char[] prefix)
 {
@@ -398,23 +422,7 @@ stock void Chat(int client, const char[] buffer, any ...)
     VFormat(msg, 256, buffer, 3);
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
-
-    Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(SayText2 == null)
-    {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
-        return;
-    }
-
-    SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-    SayText2.SetString("msg_name", msg);
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    EndMessage();
-    
+    SMUtils_SayText2(client, msg);
     SkipNextChatCS = false;
     SkipNextPrefix = false;
 }
@@ -425,23 +433,28 @@ stock void ChatEx(int[] clients, int numClients, const char[] buffer, any ...)
     VFormat(msg, 256, buffer, 4);
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
-
-    Protobuf SayText2 = view_as<Protobuf>(StartMessage("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(SayText2 == null)
+    
+    if(UMType == UM_Protobuf)
     {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> SayText2 is null");
-        return;
+        Protobuf SayText2 = view_as<Protobuf>(StartMessage("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SayText2.SetInt("ent_idx", 0);
+        SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
+        SayText2.SetString("msg_name", msg);
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        EndMessage();
+    }
+    else
+    {
+        BfWrite SayText = view_as<BfWrite>(StartMessage("SayText", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SayText.WriteByte(0);
+        SayText.WriteByte(true);
+        SayText.WriteString(msg);
+        EndMessage();
     }
 
-    SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-    SayText2.SetString("msg_name", msg);
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    EndMessage();
-    
     SkipNextChatCS = false;
     SkipNextPrefix = false;
 }
@@ -488,22 +501,27 @@ stock void ChatAll(const char[] buffer, any ...)
     VFormat(msg, 256, buffer, 2);
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
-    
-    Protobuf SayText2 = view_as<Protobuf>(StartMessageAll("SayText2", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(SayText2 == null)
-    {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> SayText2 is null");
-        return;
-    }
 
-    SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-    SayText2.SetString("msg_name", msg);
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    EndMessage();
+    if(UMType == UM_Protobuf)
+    {
+        Protobuf SayText2 = view_as<Protobuf>(StartMessageAll("SayText2", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SayText2.SetInt("ent_idx", 0);
+        SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
+        SayText2.SetString("msg_name", msg);
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        EndMessage();
+    }
+    else
+    {
+        BfWrite SayText = view_as<BfWrite>(StartMessageAll("SayText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SayText.WriteByte(0);
+        SayText.WriteByte(true);
+        SayText.WriteString(msg);
+        EndMessage();
+    }
 
     SkipNextChatCS = false;
     SkipNextPrefix = false;
@@ -516,23 +534,7 @@ stock void tChat(int client, const char[] buffer, any ...)
     VFormat(msg, 256, buffer, 3);
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
-
-    Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(SayText2 == null)
-    {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> SayText2 is null");
-        return;
-    }
-
-    SayText2.SetInt("ent_idx", 0);
-    SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-    SayText2.SetString("msg_name", msg);
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    SayText2.AddString("params", "");
-    EndMessage();
-    
+    SMUtils_SayText2(client, msg);
     SkipNextChatCS = false;
     SkipNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
@@ -550,22 +552,7 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
                 VFormat(msg, 256, buffer, 4);
                 Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
                 ProcessColorString(msg, 256);
-
-                Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-                if(SayText2 == null)
-                {
-                    LogError("StartMessageOne -> SayText2 is null");
-                    continue;
-                }
-
-                SayText2.SetInt("ent_idx", 0);
-                SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-                SayText2.SetString("msg_name", msg);
-                SayText2.AddString("params", "");
-                SayText2.AddString("params", "");
-                SayText2.AddString("params", "");
-                SayText2.AddString("params", "");
-                EndMessage();
+                SMUtils_SayText2(client, msg);
             }
         }
     
@@ -589,22 +576,7 @@ stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
                 VFormat(msg, 256, buffer, 4);
                 Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
                 ProcessColorString(msg, 256);
-
-                Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-                if(SayText2 == null)
-                {
-                    LogError("StartMessageOne -> SayText2 is null");
-                    continue;
-                }
-
-                SayText2.SetInt("ent_idx", 0);
-                SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-                SayText2.SetString("msg_name", msg);
-                SayText2.AddString("params", "");
-                SayText2.AddString("params", "");
-                SayText2.AddString("params", "");
-                SayText2.AddString("params", "");
-                EndMessage();
+                SMUtils_SayText2(client, msg);
             }
         }
 
@@ -623,22 +595,7 @@ stock void tChatAll(const char[] buffer, any ...)
             VFormat(msg, 256, buffer, 2);
             Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
             ProcessColorString(msg, 256);
-
-            Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-            if(SayText2 == null)
-            {
-                LogError("StartMessageOne -> SayText2 is null");
-                continue;
-            }
-
-            SayText2.SetInt("ent_idx", 0);
-            SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
-            SayText2.SetString("msg_name", msg);
-            SayText2.AddString("params", "");
-            SayText2.AddString("params", "");
-            SayText2.AddString("params", "");
-            SayText2.AddString("params", "");
-            EndMessage();
+            SMUtils_SayText2(client, msg);
         }
 
     SkipNextChatCS = false;
@@ -648,69 +605,116 @@ stock void tChatAll(const char[] buffer, any ...)
 
 stock void ProcessColorString(char[] message, int maxLen)
 {
-    ReplaceString(message, maxLen, "{normal}",      "\x01", false);
-    ReplaceString(message, maxLen, "{default}",     "\x01", false);
-    ReplaceString(message, maxLen, "{white}",       "\x01", false);
-    ReplaceString(message, maxLen, "{darkred}",     "\x02", false);
-    ReplaceString(message, maxLen, "{pink}",        "\x03", false);
-    ReplaceString(message, maxLen, "{green}",       "\x04", false);
-    ReplaceString(message, maxLen, "{lime}",        "\x05", false);
-    ReplaceString(message, maxLen, "{yellow}",      "\x05", false);
-    ReplaceString(message, maxLen, "{lightgreen}",  "\x06", false);
-    ReplaceString(message, maxLen, "{lightred}",    "\x07", false);
-    ReplaceString(message, maxLen, "{red}",         "\x07", false);
-    ReplaceString(message, maxLen, "{gray}",        "\x08", false);
-    ReplaceString(message, maxLen, "{grey}",        "\x08", false);
-    ReplaceString(message, maxLen, "{olive}",       "\x09", false);
-    ReplaceString(message, maxLen, "{orange}",      "\x10", false);
-    ReplaceString(message, maxLen, "{silver}",      "\x0A", false);
-    ReplaceString(message, maxLen, "{lightblue}",   "\x0B", false);
-    ReplaceString(message, maxLen, "{blue}",        "\x0C", false);
-    ReplaceString(message, maxLen, "{purple}",      "\x0E", false);
-    ReplaceString(message, maxLen, "{darkorange}",  "\x0F", false);
+    if(ReplaceColorEx)
+    {
+        ReplaceString(message, maxLen, "{normal}",      "\x07FFFFFF", false);
+        ReplaceString(message, maxLen, "{default}",     "\x07FFFFFF", false);
+        ReplaceString(message, maxLen, "{white}",       "\x07FFFFFF", false);
+        ReplaceString(message, maxLen, "{darkred}",     "\x07FF0000", false);
+        ReplaceString(message, maxLen, "{pink}",        "\x07D32CE6", false);
+        ReplaceString(message, maxLen, "{green}",       "\x077FFF00", false);
+        ReplaceString(message, maxLen, "{lime}",        "\x07BFFF00", false);
+        ReplaceString(message, maxLen, "{yellow}",      "\x07FFD700", false);
+        ReplaceString(message, maxLen, "{lightgreen}",  "\x0798FB98", false);
+        ReplaceString(message, maxLen, "{lightred}",    "\x07EB4B4B", false);
+        ReplaceString(message, maxLen, "{red}",         "\x07DC143C", false);
+        ReplaceString(message, maxLen, "{gray}",        "\x07DCDCDC", false);
+        ReplaceString(message, maxLen, "{grey}",        "\x07DCDCDC", false);
+        ReplaceString(message, maxLen, "{olive}",       "\x07808000", false);
+        ReplaceString(message, maxLen, "{orange}",      "\x07E4AE39", false);
+        ReplaceString(message, maxLen, "{silver}",      "\x07B0C3D9", false);
+        ReplaceString(message, maxLen, "{lightblue}",   "\x075E98D9", false);
+        ReplaceString(message, maxLen, "{blue}",        "\x074B69FF", false);
+        ReplaceString(message, maxLen, "{purple}",      "\x078847FF", false);
+        ReplaceString(message, maxLen, "{darkorange}",  "\x07CF6A32", false);
+    }
+    else
+    {
+        ReplaceString(message, maxLen, "{normal}",      "\x01", false);
+        ReplaceString(message, maxLen, "{default}",     "\x01", false);
+        ReplaceString(message, maxLen, "{white}",       "\x01", false);
+        ReplaceString(message, maxLen, "{darkred}",     "\x02", false);
+        ReplaceString(message, maxLen, "{pink}",        "\x03", false);
+        ReplaceString(message, maxLen, "{green}",       "\x04", false);
+        ReplaceString(message, maxLen, "{lime}",        "\x05", false);
+        ReplaceString(message, maxLen, "{yellow}",      "\x05", false);
+        ReplaceString(message, maxLen, "{lightgreen}",  "\x06", false);
+        ReplaceString(message, maxLen, "{lightred}",    "\x07", false);
+        ReplaceString(message, maxLen, "{red}",         "\x07", false);
+        ReplaceString(message, maxLen, "{gray}",        "\x08", false);
+        ReplaceString(message, maxLen, "{grey}",        "\x08", false);
+        ReplaceString(message, maxLen, "{olive}",       "\x09", false);
+        ReplaceString(message, maxLen, "{orange}",      "\x10", false);
+        ReplaceString(message, maxLen, "{silver}",      "\x0A", false);
+        ReplaceString(message, maxLen, "{lightblue}",   "\x0B", false);
+        ReplaceString(message, maxLen, "{blue}",        "\x0C", false);
+        ReplaceString(message, maxLen, "{purple}",      "\x0E", false);
+        ReplaceString(message, maxLen, "{darkorange}",  "\x0F", false);
+    }
 }
 
 stock void RemoveAllColors(char[] message, int maxLen)
 {
-    ReplaceString(message, maxLen, "{normal}", "", false);
-    ReplaceString(message, maxLen, "{default}", "", false);
-    ReplaceString(message, maxLen, "{white}", "", false);
-    ReplaceString(message, maxLen, "{darkred}", "", false);
-    ReplaceString(message, maxLen, "{teamcolor}", "", false);
-    ReplaceString(message, maxLen, "{pink}", "", false);
-    ReplaceString(message, maxLen, "{green}", "", false);
-    ReplaceString(message, maxLen, "{HIGHLIGHT}", "", false);
-    ReplaceString(message, maxLen, "{lime}", "", false);
-    ReplaceString(message, maxLen, "{lightgreen}", "", false);
-    ReplaceString(message, maxLen, "{lime}", "", false);
-    ReplaceString(message, maxLen, "{lightred}", "", false);
-    ReplaceString(message, maxLen, "{red}", "", false);
-    ReplaceString(message, maxLen, "{gray}", "", false);
-    ReplaceString(message, maxLen, "{grey}", "", false);
-    ReplaceString(message, maxLen, "{olive}", "", false);
-    ReplaceString(message, maxLen, "{yellow}", "", false);
-    ReplaceString(message, maxLen, "{orange}", "", false);
-    ReplaceString(message, maxLen, "{silver}", "", false);
-    ReplaceString(message, maxLen, "{lightblue}", "", false);
-    ReplaceString(message, maxLen, "{blue}", "", false);
-    ReplaceString(message, maxLen, "{purple}", "", false);
-    ReplaceString(message, maxLen, "{darkorange}", "", false);
-    ReplaceString(message, maxLen, "\x01", "", false);
-    ReplaceString(message, maxLen, "\x02", "", false);
-    ReplaceString(message, maxLen, "\x03", "", false);
-    ReplaceString(message, maxLen, "\x04", "", false);
-    ReplaceString(message, maxLen, "\x05", "", false);
-    ReplaceString(message, maxLen, "\x06", "", false);
-    ReplaceString(message, maxLen, "\x07", "", false);
-    ReplaceString(message, maxLen, "\x08", "", false);
-    ReplaceString(message, maxLen, "\x09", "", false);
-    ReplaceString(message, maxLen, "\x10", "", false);
-    ReplaceString(message, maxLen, "\x0A", "", false);
-    ReplaceString(message, maxLen, "\x0B", "", false);
-    ReplaceString(message, maxLen, "\x0C", "", false);
-    ReplaceString(message, maxLen, "\x0D", "", false);
-    ReplaceString(message, maxLen, "\x0E", "", false);
-    ReplaceString(message, maxLen, "\x0F", "", false);
+    ReplaceString(message, maxLen, "{normal}",      "", false);
+    ReplaceString(message, maxLen, "{default}",     "", false);
+    ReplaceString(message, maxLen, "{white}",       "", false);
+    ReplaceString(message, maxLen, "{darkred}",     "", false);
+    ReplaceString(message, maxLen, "{pink}",        "", false);
+    ReplaceString(message, maxLen, "{green}",       "", false);
+    ReplaceString(message, maxLen, "{lime}",        "", false);
+    ReplaceString(message, maxLen, "{yellow}",      "", false);
+    ReplaceString(message, maxLen, "{lightgreen}",  "", false);
+    ReplaceString(message, maxLen, "{lightred}",    "", false);
+    ReplaceString(message, maxLen, "{red}",         "", false);
+    ReplaceString(message, maxLen, "{gray}",        "", false);
+    ReplaceString(message, maxLen, "{grey}",        "", false);
+    ReplaceString(message, maxLen, "{olive}",       "", false);
+    ReplaceString(message, maxLen, "{orange}",      "", false);
+    ReplaceString(message, maxLen, "{silver}",      "", false);
+    ReplaceString(message, maxLen, "{lightblue}",   "", false);
+    ReplaceString(message, maxLen, "{blue}",        "", false);
+    ReplaceString(message, maxLen, "{purple}",      "", false);
+    ReplaceString(message, maxLen, "{darkorange}",  "", false);
+    ReplaceString(message, maxLen, "\x01",          "", false);
+    ReplaceString(message, maxLen, "\x02",          "", false);
+    ReplaceString(message, maxLen, "\x03",          "", false);
+    ReplaceString(message, maxLen, "\x04",          "", false);
+    ReplaceString(message, maxLen, "\x05",          "", false);
+    ReplaceString(message, maxLen, "\x06",          "", false);
+    ReplaceString(message, maxLen, "\x07",          "", false);
+    ReplaceString(message, maxLen, "\x08",          "", false);
+    ReplaceString(message, maxLen, "\x09",          "", false);
+    ReplaceString(message, maxLen, "\x10",          "", false);
+    ReplaceString(message, maxLen, "\x0A",          "", false);
+    ReplaceString(message, maxLen, "\x0B",          "", false);
+    ReplaceString(message, maxLen, "\x0C",          "", false);
+    ReplaceString(message, maxLen, "\x0D",          "", false);
+    ReplaceString(message, maxLen, "\x0E",          "", false);
+    ReplaceString(message, maxLen, "\x0F",          "", false);
+}
+
+stock void SMUtils_SayText2(int client, const char[] msg)
+{
+    if(UMType == UM_Protobuf)
+    {
+        Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SayText2.SetInt("ent_idx", 0);
+        SayText2.SetBool("chat", SkipNextChatCS ? false : ChatConSnd);
+        SayText2.SetString("msg_name", msg);
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        SayText2.AddString("params", "");
+        EndMessage();
+    }
+    else
+    {
+        BfWrite SayText = view_as<BfWrite>(StartMessageOne("SayText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SayText.WriteByte(0);
+        SayText.WriteByte(true);
+        SayText.WriteString(msg);
+        EndMessage();
+    }
 }
 
 
@@ -723,16 +727,7 @@ stock void Hint(int client, const char[] buffer, any ...)
     SetGlobalTransTarget(client);
     VFormat(msg, 256, buffer, 3);
     
-    Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(HintText == null)
-    {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> HintText is null");
-        return;
-    }
-
-    HintText.SetString("text", msg);
-
-    EndMessage();
+    SMUtils_Hint(client, msg);
 
     SetGlobalTransTarget(LANG_SERVER);
 }
@@ -741,16 +736,19 @@ stock void HintAll(const char[] buffer, any ...)
 {
     char msg[256];
     VFormat(msg, 256, buffer, 2);
-    
-    Protobuf HintText = view_as<Protobuf>(StartMessageAll("HintText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(HintText == null)
-    {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> HintText is null");
-        return;
-    }
 
-    HintText.SetString("text", msg);
-    EndMessage();
+    if(UMType == UM_Protobuf)
+    {
+        Protobuf HintText = view_as<Protobuf>(StartMessageAll("HintText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.SetString("text", msg);
+        EndMessage();
+    }
+    else
+    {
+        BfWrite HintText = view_as<BfWrite>(StartMessageAll("HintText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.WriteString(msg);
+        EndMessage();
+    }
 }
 
 stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
@@ -758,15 +756,18 @@ stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
     char msg[256];
     VFormat(msg, 256, buffer, 3);
 
-    Protobuf HintText = view_as<Protobuf>(StartMessage("HintText", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(HintText == null)
+    if(UMType == UM_Protobuf)
     {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> HintText is null");
-        return;
+        Protobuf HintText = view_as<Protobuf>(StartMessage("HintText", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.SetString("text", msg);
+        EndMessage();
     }
-
-    HintText.SetString("text", msg);
-    EndMessage();
+    else
+    {
+        BfWrite HintText = view_as<BfWrite>(StartMessage("HintText", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.WriteString(msg);
+        EndMessage();
+    }
 }
 
 stock void tHintAll(const char[] buffer, any ...)
@@ -778,21 +779,27 @@ stock void tHintAll(const char[] buffer, any ...)
             SetGlobalTransTarget(client);
             VFormat(msg, 256, buffer, 2);
 
-            Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-            if(HintText == null)
-            {
-                LogError("StartMessageOne -> HintText is null");
-                continue;
-            }
-
-            HintText.SetString("text", msg);
-
-            EndMessage();
+            SMUtils_Hint(client, msg);
         }
 
     SetGlobalTransTarget(LANG_SERVER);
 }
 
+stock void SMUtils_Hint(int client, const char[] msg)
+{
+    if(UMType == UM_Protobuf)
+    {
+        Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.SetString("text", msg);
+        EndMessage();
+    }
+    else
+    {
+        BfWrite HintText = view_as<BfWrite>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.WriteString(msg);
+        EndMessage();
+    }
+}
 
 /**************************
             TextMsg
@@ -813,22 +820,8 @@ stock void Text(int client, const char[] buffer, any ...)
     char msg[256];
     SetGlobalTransTarget(client);
     VFormat(msg, 256, buffer, 3);
-    
-    Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(TextMsg == null)
-    {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageOne -> TextMsg is null");
-        return;
-    }
 
-    TextMsg.SetInt("msg_dst", TextMsgDest); 
-    TextMsg.AddString("params", msg);
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-
-    EndMessage();
+    SMUtils_Text(client, msg);
 
     SetGlobalTransTarget(LANG_SERVER);
 }
@@ -837,22 +830,29 @@ stock void TextAll(const char[] buffer, any ...)
 {
     char msg[256];
     VFormat(msg, 256, buffer, 2);
-    
-    Protobuf TextMsg = view_as<Protobuf>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(TextMsg == null)
+
+    if(UMType == UM_Protobuf)
     {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessageAll -> TextMsg is null");
-        return;
+        Protobuf TextMsg = view_as<Protobuf>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        TextMsg.SetInt("msg_dst", TextMsgDest); 
+        TextMsg.AddString("params", msg);
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        EndMessage();
     }
-
-    TextMsg.SetInt("msg_dst", TextMsgDest); 
-    TextMsg.AddString("params", msg);
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-
-    EndMessage();
+    else
+    {
+        BfWrite TextMsg = view_as<BfWrite>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        TextMsg.WriteByte(TextMsgDest); 
+        TextMsg.WriteString(msg);
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        EndMessage();
+    }
 }
 
 stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
@@ -860,21 +860,28 @@ stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
     char msg[256];
     VFormat(msg, 256, buffer, 3);
 
-    Protobuf TextMsg = view_as<Protobuf>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-    if(TextMsg == null)
+    if(UMType == UM_Protobuf)
     {
-        ThrowNativeError(SP_ERROR_NATIVE, "StartMessage -> TextMsg is null");
-        return;
+        Protobuf TextMsg = view_as<Protobuf>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        TextMsg.SetInt("msg_dst", TextMsgDest); 
+        TextMsg.AddString("params", msg);
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        EndMessage();
     }
-
-    TextMsg.SetInt("msg_dst", TextMsgDest); 
-    TextMsg.AddString("params", msg);
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-    TextMsg.AddString("params", "");
-
-    EndMessage();
+    else
+    {
+        BfWrite TextMsg = view_as<BfWrite>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        TextMsg.WriteByte(TextMsgDest); 
+        TextMsg.WriteString(msg);
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        EndMessage();
+    }
 }
 
 stock void tTextAll(const char[] buffer, any ...)
@@ -886,24 +893,36 @@ stock void tTextAll(const char[] buffer, any ...)
             SetGlobalTransTarget(client);
             VFormat(msg, 256, buffer, 2);
 
-            Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-            if(TextMsg == null)
-            {
-                LogError("StartMessageOne -> TextMsg is null");
-                continue;
-            }
-
-            TextMsg.SetInt("msg_dst", TextMsgDest); 
-            TextMsg.AddString("params", msg);
-            TextMsg.AddString("params", "");
-            TextMsg.AddString("params", "");
-            TextMsg.AddString("params", "");
-            TextMsg.AddString("params", "");
-
-            EndMessage();
+            SMUtils_Text(client, msg);
         }
 
     SetGlobalTransTarget(LANG_SERVER);
+}
+
+stock void SMUtils_Text(int client, const char[] msg)
+{
+    if(UMType == UM_Protobuf)
+    {
+        Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        TextMsg.SetInt("msg_dst", TextMsgDest); 
+        TextMsg.AddString("params", msg);
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        EndMessage();
+    }
+    else
+    {
+        BfWrite TextMsg = view_as<BfWrite>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        TextMsg.WriteByte(TextMsgDest); 
+        TextMsg.WriteString(msg);
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        TextMsg.WriteString("");
+        EndMessage();
+    }
 }
 
 
@@ -1272,25 +1291,13 @@ stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int m
 
 stock int GetPlayerWeaponEntity(int client, const char[] weapons)
 {
-    static int m_hMyWeapons = -1;
-    if(m_hMyWeapons == -1)
+    int weapon = -1;
+    int m_hMyWeapons = GetEntPropArraySize(client, Prop_Send, "m_hMyWeapons");
+    for(int offset = 0; offset < m_hMyWeapons; offset++)
     {
-        m_hMyWeapons = FindSendPropInfo("CBasePlayer", "m_hMyWeapons");
-        if(m_hMyWeapons == -1) ThrowError("CBasePlayer.m_hMyWeapons offset is not valid.");
-    }
-
-    for(int offset = 0; offset < 128; offset += 4)
-    {
-        int weapon = GetEntDataEnt2(client, m_hMyWeapons+offset);
-
-        if(IsValidEdict(weapon))
-        {
-            char classname[32];
-            GetEdictClassname(weapon, classname, 32);
-
-            if(strcmp(weapons, classname, false) == 0)
-                return weapon;
-        }
+        weapon = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", offset);
+        if(weapon > MaxClients)
+            return weapon;
     }
 
     return -1;
@@ -1629,7 +1636,7 @@ stock void RandomString(char[] buffer, int maxLen)
     maxLen--;
 
     char random[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234556789";
-    int randlen = strlen(random) - 1;
+    int randlen = strlen(random);
 
     int n = 0;
     int c = 0;
@@ -1657,7 +1664,7 @@ stock void RandomStringEx(const char[] random, char[] buffer, int maxLen)
 {
     maxLen--;
     
-    int randlen = strlen(random) - 1;
+    int randlen = strlen(random);
 
     int n = 0;
     int c = 0;
