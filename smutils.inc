@@ -7,8 +7,7 @@
 /*  Description:   Some helpful functions.                        */
 /*                                                                */
 /*                                                                */
-/*  Copyright (C) 2018  Kyle   https://kxnrl.com                  */
-/*  2018/04/04 10:17:14                                           */
+/*  Copyright (C) 2020  Kyle   https://www.kxnrl.com              */
 /*                                                                */
 /*  This code is licensed under the GPLv3 License.                */
 /*                                                                */
@@ -36,6 +35,8 @@
     #define DMG_HEADSHOT (1 << 31)
 #endif
 
+#define SMUitls_MaxSpaceLength 1024
+static char g_PlaceHolder[SMUitls_MaxSpaceLength+1];
 
 /**************************
             Global
@@ -181,7 +182,7 @@ stock void SetClientHud(int client, int val)
 
 stock void SetClientWallHack(int client, float time) // time = GetGameTime() + val
 {
-    SetEntPropFloat(client, Prop_Send, "m_flDetectedByEnemySensorTime", 0.0);
+    SetEntPropFloat(client, Prop_Send, "m_flDetectedByEnemySensorTime", time);
 }
 
 stock int GetClientAimTargetPos(int client, float pos[3])
@@ -360,7 +361,7 @@ stock void GetDate(int unix_timestamp = 0, const char[] format = "%Y/%m/%d %H:%M
 /**************************
             Chat
 **************************/
-static char ChatPrefix[32] = "[\x04SM\x01]";
+static char ChatPrefix[64] = "[\x04SM\x01]";
 static char ChatSpaces[32] = "   ";
 static bool ChatConSnd     = true;
 static bool SkipNextChatCS = false;
@@ -369,7 +370,7 @@ static bool ReplaceColorEx = false;
 static UserMessageType UMType = UM_Protobuf;
 static EngineVersion GameEngine = Engine_CSGO;
 
-stock void SMUitls_InitUserMessage()
+stock void SMUtils_InitUserMessage()
 {
     UMType = GetUserMessageType();
     GameEngine = GetEngineVersion();
@@ -386,11 +387,17 @@ stock void SMUitls_InitUserMessage()
     {
         SetFailState("Current Engine not suppoirted");
     }
+
+    for (int i = 0; i < SMUitls_MaxSpaceLength; i++)
+    {
+        g_PlaceHolder[i] = ' ';
+    }
+    g_PlaceHolder[SMUitls_MaxSpaceLength] = '\0';
 }
 
 stock int SMUtils_SetChatPrefix(const char[] prefix)
 {
-    return strcopy(ChatPrefix, 32, prefix);
+    return strcopy(ChatPrefix, 64, prefix);
 }
 
 stock int SMUtils_SetChatSpaces(const char[] spaces)
@@ -657,6 +664,7 @@ stock void RemoveAllColors(char[] message, int maxLen)
 {
     ReplaceString(message, maxLen, "{normal}",      "", false);
     ReplaceString(message, maxLen, "{default}",     "", false);
+    ReplaceString(message, maxLen, "{teamcolor}",   "", false);
     ReplaceString(message, maxLen, "{white}",       "", false);
     ReplaceString(message, maxLen, "{darkred}",     "", false);
     ReplaceString(message, maxLen, "{pink}",        "", false);
@@ -723,24 +731,23 @@ stock void SMUtils_SayText2(int client, const char[] msg)
 **************************/
 stock void Hint(int client, const char[] buffer, any ...)
 {
-    char msg[256];
+    char msg[1024];
     SetGlobalTransTarget(client);
-    VFormat(msg, 256, buffer, 3);
-    
+    VFormat(msg, 1024, buffer, 3);
     SMUtils_Hint(client, msg);
-
     SetGlobalTransTarget(LANG_SERVER);
 }
 
 stock void HintAll(const char[] buffer, any ...)
 {
-    char msg[256];
-    VFormat(msg, 256, buffer, 2);
+    char msg[1024];
+    VFormat(msg, 1024, buffer, 2);
 
     if(UMType == UM_Protobuf)
     {
-        Protobuf HintText = view_as<Protobuf>(StartMessageAll("HintText", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        HintText.SetString("text", msg);
+        bool color = false;
+        Protobuf HintText = view_as<Protobuf>(StartMessageAll(SMUitls_HintAdapter(msg, color), USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SMUtils_HintColor(HintText, color, msg);
         EndMessage();
     }
     else
@@ -753,13 +760,14 @@ stock void HintAll(const char[] buffer, any ...)
 
 stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
 {
-    char msg[256];
-    VFormat(msg, 256, buffer, 3);
+    char msg[1024];
+    VFormat(msg, 1024, buffer, 3);
 
     if(UMType == UM_Protobuf)
     {
-        Protobuf HintText = view_as<Protobuf>(StartMessage("HintText", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        HintText.SetString("text", msg);
+        bool color = false;
+        Protobuf HintText = view_as<Protobuf>(StartMessage(SMUitls_HintAdapter(msg, color), clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SMUtils_HintColor(HintText, color, msg);
         EndMessage();
     }
     else
@@ -772,13 +780,12 @@ stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
 
 stock void tHintAll(const char[] buffer, any ...)
 {
-    char msg[256];
+    char msg[1024];
     for(int client = 1; client <= MaxClients; ++client)
         if(ClientIsValid(client))
         {
             SetGlobalTransTarget(client);
-            VFormat(msg, 256, buffer, 2);
-
+            VFormat(msg, 1024, buffer, 2);
             SMUtils_Hint(client, msg);
         }
 
@@ -789,8 +796,9 @@ stock void SMUtils_Hint(int client, const char[] msg)
 {
     if(UMType == UM_Protobuf)
     {
-        Protobuf HintText = view_as<Protobuf>(StartMessageOne("HintText", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        HintText.SetString("text", msg);
+        bool color = false;
+        Protobuf HintText = view_as<Protobuf>(StartMessageOne(SMUitls_HintAdapter(msg, color), client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SMUtils_HintColor(HintText, color, msg);
         EndMessage();
     }
     else
@@ -801,13 +809,48 @@ stock void SMUtils_Hint(int client, const char[] msg)
     }
 }
 
+stock char[] SMUitls_HintAdapter(const char[] message, bool &color)
+{
+    char adapter[16];
+    if (StrContains(message, "<font") != -1 || StrContains(message, "<span") != -1)
+    {
+        color = true;
+        strcopy(adapter, 16, "TextMsg");
+    }
+    else
+    {
+        strcopy(adapter, 16, "HintText");
+    }
+    return adapter;
+}
+
+stock void SMUtils_HintColor(Protobuf TextMsg, bool color, const char[] message)
+{
+    if (color)
+    {
+        char text[2048];
+        TextMsg.SetInt("msg_dst", 4);
+        TextMsg.AddString("params", "#SFUI_ContractKillStart");
+        Format(text, 2048, "</font>%s%s", message, g_PlaceHolder);
+        TextMsg.AddString("params", text);
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+        TextMsg.AddString("params", "");
+    }
+    else
+    {
+        TextMsg.SetString("text", message);
+    }
+}
+
 /**************************
             TextMsg
 **************************/
-#define HUD_PRINTNOTIFY   1 
-#define HUD_PRINTCONSOLE  2 
-#define HUD_PRINTTALK     3 
-#define HUD_PRINTCENTER   4 
+#define HUD_PRINTNOTIFY   1
+#define HUD_PRINTCONSOLE  2
+#define HUD_PRINTTALK     3
+#define HUD_PRINTCENTER   4
 static int TextMsgDest = HUD_PRINTCENTER;
 
 stock void SMUtils_SetTextDest(int val)
@@ -817,29 +860,22 @@ stock void SMUtils_SetTextDest(int val)
 
 stock void Text(int client, const char[] buffer, any ...)
 {
-    char msg[256];
+    char msg[2048];
     SetGlobalTransTarget(client);
-    VFormat(msg, 256, buffer, 3);
-
+    VFormat(msg, 2048, buffer, 3);
     SMUtils_Text(client, msg);
-
     SetGlobalTransTarget(LANG_SERVER);
 }
 
 stock void TextAll(const char[] buffer, any ...)
 {
-    char msg[256];
-    VFormat(msg, 256, buffer, 2);
+    char msg[2048];
+    VFormat(msg, 2048, buffer, 2);
 
     if(UMType == UM_Protobuf)
     {
         Protobuf TextMsg = view_as<Protobuf>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        TextMsg.SetInt("msg_dst", TextMsgDest); 
-        TextMsg.AddString("params", msg);
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
+        SMUtils_TextColor(TextMsg, msg);
         EndMessage();
     }
     else
@@ -857,18 +893,13 @@ stock void TextAll(const char[] buffer, any ...)
 
 stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
 {
-    char msg[256];
-    VFormat(msg, 256, buffer, 3);
+    char msg[2048];
+    VFormat(msg, 2048, buffer, 3);
 
     if(UMType == UM_Protobuf)
     {
         Protobuf TextMsg = view_as<Protobuf>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        TextMsg.SetInt("msg_dst", TextMsgDest); 
-        TextMsg.AddString("params", msg);
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
+        SMUtils_TextColor(TextMsg, msg);
         EndMessage();
     }
     else
@@ -886,7 +917,7 @@ stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
 
 stock void tTextAll(const char[] buffer, any ...)
 {
-    char msg[256];
+    char msg[2048];
     for(int client = 1; client <= MaxClients; ++client)
         if(ClientIsValid(client))
         {
@@ -904,12 +935,7 @@ stock void SMUtils_Text(int client, const char[] msg)
     if(UMType == UM_Protobuf)
     {
         Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        TextMsg.SetInt("msg_dst", TextMsgDest); 
-        TextMsg.AddString("params", msg);
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
-        TextMsg.AddString("params", "");
+        SMUtils_TextColor(TextMsg, msg);
         EndMessage();
     }
     else
@@ -923,6 +949,28 @@ stock void SMUtils_Text(int client, const char[] msg)
         TextMsg.WriteString("");
         EndMessage();
     }
+}
+
+stock void SMUtils_TextColor(Protobuf TextMsg, const char[] message)
+{
+    if (StrContains(message, "<font") != -1 || StrContains(message, "<span") != -1)
+    {
+        char text[2048];
+        TextMsg.SetInt("msg_dst", 4);
+        TextMsg.AddString("params", "#SFUI_ContractKillStart");
+        Format(text, 2048, "</font>%s%s", message, g_PlaceHolder);
+        TextMsg.AddString("params", text);
+    }
+    else
+    {
+        TextMsg.SetInt("msg_dst", TextMsgDest); 
+        TextMsg.AddString("params", message);
+    }
+
+    TextMsg.AddString("params", "");
+    TextMsg.AddString("params", "");
+    TextMsg.AddString("params", "");
+    TextMsg.AddString("params", "");
 }
 
 
@@ -951,7 +999,7 @@ enum InstructorHud_Icon
     Icon_present
 };
 
-static char InstructorHud_Icon_String[InstructorHud_Icon][32] =
+static char InstructorHud_Icon_String[][] =
 {
     "icon_bulb",
     "icon_caution",
@@ -1256,6 +1304,31 @@ stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int
     EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
+stock int SpawnSpeakerEntity(float fPos[3], float fAgl[3], int source, float removeDelay = 0.1)
+{
+    int speaker = CreateEntityByName("info_target");
+    
+    if(speaker == -1)
+        return -1;
+
+    DispatchSpawn(speaker);
+
+    TeleportEntity(speaker, fPos, fAgl, NULL_VECTOR);
+
+    SetVariantString("!activator");
+    AcceptEntityInput(speaker, "SetParent", source, speaker, 0);
+
+    if(removeDelay > 0.0)
+    {
+        char input[128];
+        FormatEx(input, 128, "OnUser4 !self:Kill::%.2f:1", removeDelay);
+        SetVariantString(input);
+        AcceptEntityInput(speaker, "AddOutput");
+        AcceptEntityInput(speaker, "FireUser4");
+    }
+
+    return speaker;
+}
 
 /**************************
             Weapon
@@ -1297,7 +1370,14 @@ stock int GetPlayerWeaponEntity(int client, const char[] weapons)
     {
         weapon = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", offset);
         if(weapon > MaxClients)
-            return weapon;
+        {
+            char classname[32];
+            if (GetWeaponClassname(weapon, -1, classname, 32) > 0)
+            {
+                if (strcmp(classname, weapons, false) == 0)
+                    return weapon;
+            }
+        }
     }
 
     return -1;
