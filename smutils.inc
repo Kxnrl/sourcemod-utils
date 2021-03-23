@@ -7,7 +7,7 @@
 /*  Description:   Some helpful functions.                        */
 /*                                                                */
 /*                                                                */
-/*  Copyright (C) 2020  Kyle   https://www.kxnrl.com              */
+/*  Copyright (C) 2021  Kyle   https://www.kxnrl.com              */
 /*                                                                */
 /*  This code is licensed under the GPLv3 License.                */
 /*                                                                */
@@ -20,7 +20,7 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.2.1"
+#define SMUtils_Version "1.3"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://github.com/Kxnrl/sourcemod-utils"
 
@@ -31,9 +31,11 @@
 #include <sdktools>
 #define REQUIRE_EXTENSIONS
 
-#if !defined DMG_HEADSHOT
-    #define DMG_HEADSHOT (1 << 31)
+#if defined DMG_HEADSHOT
+    #undef DMG_HEADSHOT
 #endif
+
+#define DMG_HEADSHOT (DMG_LASTGENERICFLAG<<1)
 
 #define SMUitls_MaxSpaceLength 1024
 static char g_PlaceHolder[SMUitls_MaxSpaceLength+1];
@@ -973,6 +975,153 @@ stock void SMUtils_TextColor(Protobuf TextMsg, const char[] message)
     TextMsg.AddString("params", "");
 }
 
+/**************************
+        Game Text
+**************************/
+static int gameText_Clr2[4] = {255,255,255,255};
+static int gameText_Argb[4] = {255,255,255,255};
+static float gameText_Pos[2] = {-1.0, -1.0};
+static float gameText_Hold = 1.0;
+static int gameText_effect = 0;
+static float gameText_FxTime = 0.0;
+static float gameText_FadeIn = 0.0;
+static float gameText_FadeOut = 0.0;
+
+stock void SMUtils_SetHudParams(float x, float y, float holdTime, int r, int g, int b, int a, int effect, float fxTime, float fadeIn, float fadeOut)
+{
+    gameText_Pos[0] = x;
+    gameText_Pos[1] = y;
+
+    gameText_Hold = holdTime;
+
+    gameText_Argb[0] = r;
+    gameText_Argb[1] = g;
+    gameText_Argb[2] = b;
+    gameText_Argb[3] = a;
+
+    gameText_effect  = effect;
+    gameText_FxTime  = fxTime;
+    gameText_FadeIn  = fadeIn;
+    gameText_FadeOut = fadeOut;
+}
+
+stock void SendHudMessageEx(int client, int channel, const float hold, const float pos[2], const int rgba[4], int effect, float fx, float fi, float fo, const char[] message)
+{
+    Protobuf HudMsg = view_as<Protobuf>(StartMessageOne("HudMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    HudMsg.SetInt("channel", channel);
+    HudMsg.SetVector2D("pos", pos);
+    HudMsg.SetColor("clr1", rgba);
+    HudMsg.SetColor("clr2", gameText_Clr2);
+    HudMsg.SetInt("effect", effect);
+    HudMsg.SetFloat("fade_in_time", fi);
+    HudMsg.SetFloat("fade_out_time", fo);
+    HudMsg.SetFloat("fx_time", fx);
+    HudMsg.SetFloat("hold_time", hold);
+    HudMsg.SetString("text", message);
+    EndMessage();
+}
+
+stock void SendHudMessageClients(int channel, int[] clients, int numClients, const char[] message)
+{
+    Protobuf HudMsg = view_as<Protobuf>(StartMessage("HudMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    HudMsg.SetInt("channel", channel);
+    HudMsg.SetVector2D("pos", gameText_Pos);
+    HudMsg.SetColor("clr1", gameText_Argb);
+    HudMsg.SetColor("clr2", gameText_Clr2);
+    HudMsg.SetInt("effect", gameText_effect);
+    HudMsg.SetFloat("fade_in_time", gameText_FadeIn);
+    HudMsg.SetFloat("fade_out_time", gameText_FadeOut);
+    HudMsg.SetFloat("fx_time", gameText_FxTime);
+    HudMsg.SetFloat("hold_time", gameText_Hold);
+    HudMsg.SetString("text", message);
+    EndMessage();
+}
+
+stock void SendHudMessage(int client, int channel, const char[] buffer, any ...)
+{
+    char message[512];
+    VFormat(message, 512, buffer, 4);
+
+    Protobuf HudMsg = view_as<Protobuf>(StartMessageOne("HudMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    HudMsg.SetInt("channel", channel);
+    HudMsg.SetVector2D("pos", gameText_Pos);
+    HudMsg.SetColor("clr1", gameText_Argb);
+    HudMsg.SetColor("clr2", gameText_Clr2);
+    HudMsg.SetInt("effect", gameText_effect);
+    HudMsg.SetFloat("fade_in_time", gameText_FadeIn);
+    HudMsg.SetFloat("fade_out_time", gameText_FadeOut);
+    HudMsg.SetFloat("fx_time", gameText_FxTime);
+    HudMsg.SetFloat("hold_time", gameText_Hold);
+    HudMsg.SetString("text", message);
+    EndMessage();
+}
+
+stock void SendHudMessage2(int client, int channel, const char[] message)
+{
+    Protobuf HudMsg = view_as<Protobuf>(StartMessageOne("HudMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    HudMsg.SetInt("channel", channel);
+    HudMsg.SetVector2D("pos", gameText_Pos);
+    HudMsg.SetColor("clr1", gameText_Argb);
+    HudMsg.SetColor("clr2", gameText_Clr2);
+    HudMsg.SetInt("effect", gameText_effect);
+    HudMsg.SetFloat("fade_in_time", gameText_FadeIn);
+    HudMsg.SetFloat("fade_out_time", gameText_FadeOut);
+    HudMsg.SetFloat("fx_time", gameText_FxTime);
+    HudMsg.SetFloat("hold_time", gameText_Hold);
+    HudMsg.SetString("text", message);
+    EndMessage();
+}
+
+stock void SendHudMessageAll(int channel, const char[] buffer, any ...)
+{
+    char message[512];
+    VFormat(message, 512, buffer, 3);
+
+    Protobuf HudMsg = view_as<Protobuf>(StartMessageAll("HudMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    HudMsg.SetInt("channel", channel);
+    HudMsg.SetVector2D("pos", gameText_Pos);
+    HudMsg.SetColor("clr1", gameText_Argb);
+    HudMsg.SetColor("clr2", gameText_Clr2);
+    HudMsg.SetInt("effect", gameText_effect);
+    HudMsg.SetFloat("fade_in_time", gameText_FadeIn);
+    HudMsg.SetFloat("fade_out_time", gameText_FadeOut);
+    HudMsg.SetFloat("fx_time", gameText_FxTime);
+    HudMsg.SetFloat("hold_time", gameText_Hold);
+    HudMsg.SetString("text", message);
+    EndMessage();
+}
+
+stock void SendHudMessageTeam(int team, int channel, const char[] buffer, any ...)
+{
+    char message[512];
+    VFormat(message, 512, buffer, 4);
+
+    int[] clients = new int [MAXPLAYERS+1];
+    int total = 0;
+    int iTeam = 0;
+    
+    for(int client = 1; client <= MaxClients; client++)
+        if(ClientIsValid(client))
+        {
+            iTeam = GetClientTeam(client);
+            if(iTeam == team)
+                clients[total++] = client;
+        }
+
+    Protobuf HudMsg = view_as<Protobuf>(StartMessage("HudMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    HudMsg.SetInt("channel", channel);
+    HudMsg.SetVector2D("pos", gameText_Pos);
+    HudMsg.SetColor("clr1", gameText_Argb);
+    HudMsg.SetColor("clr2", gameText_Clr2);
+    HudMsg.SetInt("effect", gameText_effect);
+    HudMsg.SetFloat("fade_in_time", gameText_FadeIn);
+    HudMsg.SetFloat("fade_out_time", gameText_FadeOut);
+    HudMsg.SetFloat("fx_time", gameText_FxTime);
+    HudMsg.SetFloat("hold_time", gameText_Hold);
+    HudMsg.SetString("text", message);
+    EndMessage();
+}
+
 
 /**************************
         MissionHint
@@ -1545,7 +1694,7 @@ stock bool SetEntityParentEx(int child, int parent, const char[] attchment, cons
 
     SetVariantString(attchment);
     
-    if(offset[0] != 0.0 || offset[1] != 0.0 || offset[2] != 0.0)
+    if(offset[0] == 0.0 && offset[1] == 0.0 && offset[2] == 0.0)
         return AcceptEntityInput(child, "SetParentAttachment", parent, child);
 
     float fPos[3];
