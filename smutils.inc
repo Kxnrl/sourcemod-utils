@@ -35,7 +35,7 @@
     #undef DMG_HEADSHOT
 #endif
 
-#define DMG_HEADSHOT (DMG_LASTGENERICFLAG<<1)
+#define DMG_HEADSHOT (DMG_BUCKSHOT<<1)
 
 #define SMUitls_MaxSpaceLength 1024
 static char g_PlaceHolder[SMUitls_MaxSpaceLength+1];
@@ -642,65 +642,66 @@ stock void ProcessColorString(char[] message, int maxLen)
         ReplaceString(message, maxLen, "{normal}",      "\x01", false);
         ReplaceString(message, maxLen, "{default}",     "\x01", false);
         ReplaceString(message, maxLen, "{white}",       "\x01", false);
+        ReplaceString(message, maxLen, "{team}",        "\x03", false);
+
         ReplaceString(message, maxLen, "{darkred}",     "\x02", false);
         ReplaceString(message, maxLen, "{pink}",        "\x03", false);
         ReplaceString(message, maxLen, "{green}",       "\x04", false);
-        ReplaceString(message, maxLen, "{lime}",        "\x05", false);
-        ReplaceString(message, maxLen, "{yellow}",      "\x05", false);
-        ReplaceString(message, maxLen, "{lightgreen}",  "\x06", false);
-        ReplaceString(message, maxLen, "{lightred}",    "\x07", false);
+        ReplaceString(message, maxLen, "{lightgreen}",  "\x05", false);
+        ReplaceString(message, maxLen, "{lime}",        "\x06", false);
         ReplaceString(message, maxLen, "{red}",         "\x07", false);
-        ReplaceString(message, maxLen, "{gray}",        "\x08", false);
         ReplaceString(message, maxLen, "{grey}",        "\x08", false);
-        ReplaceString(message, maxLen, "{olive}",       "\x09", false);
-        ReplaceString(message, maxLen, "{orange}",      "\x10", false);
+        ReplaceString(message, maxLen, "{yellow}",      "\x09", false);
+        ReplaceString(message, maxLen, "{gold}",        "\x10", false);
         ReplaceString(message, maxLen, "{silver}",      "\x0A", false);
-        ReplaceString(message, maxLen, "{lightblue}",   "\x0B", false);
-        ReplaceString(message, maxLen, "{blue}",        "\x0C", false);
+        ReplaceString(message, maxLen, "{blue}",        "\x0B", false);
+        ReplaceString(message, maxLen, "{darkblue}",    "\x0C", false);
         ReplaceString(message, maxLen, "{purple}",      "\x0E", false);
-        ReplaceString(message, maxLen, "{darkorange}",  "\x0F", false);
+        ReplaceString(message, maxLen, "{lightred}",    "\x0F", false);
     }
 }
 
 stock void RemoveAllColors(char[] message, int maxLen)
 {
-    ReplaceString(message, maxLen, "{normal}",      "", false);
-    ReplaceString(message, maxLen, "{default}",     "", false);
-    ReplaceString(message, maxLen, "{teamcolor}",   "", false);
-    ReplaceString(message, maxLen, "{white}",       "", false);
-    ReplaceString(message, maxLen, "{darkred}",     "", false);
-    ReplaceString(message, maxLen, "{pink}",        "", false);
-    ReplaceString(message, maxLen, "{green}",       "", false);
-    ReplaceString(message, maxLen, "{lime}",        "", false);
-    ReplaceString(message, maxLen, "{yellow}",      "", false);
-    ReplaceString(message, maxLen, "{lightgreen}",  "", false);
-    ReplaceString(message, maxLen, "{lightred}",    "", false);
-    ReplaceString(message, maxLen, "{red}",         "", false);
-    ReplaceString(message, maxLen, "{gray}",        "", false);
-    ReplaceString(message, maxLen, "{grey}",        "", false);
-    ReplaceString(message, maxLen, "{olive}",       "", false);
-    ReplaceString(message, maxLen, "{orange}",      "", false);
-    ReplaceString(message, maxLen, "{silver}",      "", false);
-    ReplaceString(message, maxLen, "{lightblue}",   "", false);
-    ReplaceString(message, maxLen, "{blue}",        "", false);
-    ReplaceString(message, maxLen, "{purple}",      "", false);
-    ReplaceString(message, maxLen, "{darkorange}",  "", false);
-    ReplaceString(message, maxLen, "\x01",          "", false);
-    ReplaceString(message, maxLen, "\x02",          "", false);
-    ReplaceString(message, maxLen, "\x03",          "", false);
-    ReplaceString(message, maxLen, "\x04",          "", false);
-    ReplaceString(message, maxLen, "\x05",          "", false);
-    ReplaceString(message, maxLen, "\x06",          "", false);
-    ReplaceString(message, maxLen, "\x07",          "", false);
-    ReplaceString(message, maxLen, "\x08",          "", false);
-    ReplaceString(message, maxLen, "\x09",          "", false);
-    ReplaceString(message, maxLen, "\x10",          "", false);
-    ReplaceString(message, maxLen, "\x0A",          "", false);
-    ReplaceString(message, maxLen, "\x0B",          "", false);
-    ReplaceString(message, maxLen, "\x0C",          "", false);
-    ReplaceString(message, maxLen, "\x0D",          "", false);
-    ReplaceString(message, maxLen, "\x0E",          "", false);
-    ReplaceString(message, maxLen, "\x0F",          "", false);
+    ProcessColorString(message, maxLen);
+
+    ReplaceString(message, maxLen, "\x01", "", false);
+    ReplaceString(message, maxLen, "\x02", "", false);
+    ReplaceString(message, maxLen, "\x03", "", false);
+    ReplaceString(message, maxLen, "\x04", "", false);
+    ReplaceString(message, maxLen, "\x05", "", false);
+    ReplaceString(message, maxLen, "\x06", "", false);
+    ReplaceString(message, maxLen, "\x07", "", false);
+    ReplaceString(message, maxLen, "\x08", "", false);
+    ReplaceString(message, maxLen, "\x09", "", false);
+    ReplaceString(message, maxLen, "\x10", "", false);
+    ReplaceString(message, maxLen, "\x0A", "", false);
+    ReplaceString(message, maxLen, "\x0B", "", false);
+    ReplaceString(message, maxLen, "\x0C", "", false);
+    ReplaceString(message, maxLen, "\x0D", "", false);
+    ReplaceString(message, maxLen, "\x0E", "", false);
+    ReplaceString(message, maxLen, "\x0F", "", false);
+
+    ReplaceString(message, maxLen, "\x07FFFFFF", "", false);
+    ReplaceString(message, maxLen, "\x07FFFFFF", "", false);
+    ReplaceString(message, maxLen, "\x07FFFFFF", "", false);
+    ReplaceString(message, maxLen, "\x07FF0000", "", false);
+    ReplaceString(message, maxLen, "\x07D32CE6", "", false);
+    ReplaceString(message, maxLen, "\x077FFF00", "", false);
+    ReplaceString(message, maxLen, "\x07BFFF00", "", false);
+    ReplaceString(message, maxLen, "\x07FFD700", "", false);
+    ReplaceString(message, maxLen, "\x0798FB98", "", false);
+    ReplaceString(message, maxLen, "\x07EB4B4B", "", false);
+    ReplaceString(message, maxLen, "\x07DC143C", "", false);
+    ReplaceString(message, maxLen, "\x07DCDCDC", "", false);
+    ReplaceString(message, maxLen, "\x07DCDCDC", "", false);
+    ReplaceString(message, maxLen, "\x07808000", "", false);
+    ReplaceString(message, maxLen, "\x07E4AE39", "", false);
+    ReplaceString(message, maxLen, "\x07B0C3D9", "", false);
+    ReplaceString(message, maxLen, "\x075E98D9", "", false);
+    ReplaceString(message, maxLen, "\x074B69FF", "", false);
+    ReplaceString(message, maxLen, "\x078847FF", "", false);
+    ReplaceString(message, maxLen, "\x07CF6A32", "", false);
 }
 
 stock void SMUtils_SayText2(int client, const char[] msg)
@@ -1492,20 +1493,32 @@ stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int m
 
     switch(index)
     {
+        case 41 : return strcopy(classname, maxLen, "weapon_knifegg");
+        case 42 : return strcopy(classname, maxLen, "weapon_knife");
+        case 59 : return strcopy(classname, maxLen, "weapon_knife_t");
         case 60 : return strcopy(classname, maxLen, "weapon_m4a1_silencer");
         case 61 : return strcopy(classname, maxLen, "weapon_usp_silencer");
         case 63 : return strcopy(classname, maxLen, "weapon_cz75a");
         case 64 : return strcopy(classname, maxLen, "weapon_revolver");
         case 500: return strcopy(classname, maxLen, "weapon_bayonet");
-        case 506: return strcopy(classname, maxLen, "weapon_knife_gut");
+        case 503: return strcopy(classname, maxLen, "weapon_knife_css");
         case 505: return strcopy(classname, maxLen, "weapon_knife_flip");
-        case 508: return strcopy(classname, maxLen, "weapon_knife_m9_bayonet");
+        case 506: return strcopy(classname, maxLen, "weapon_knife_gut");
         case 507: return strcopy(classname, maxLen, "weapon_knife_karambit");
+        case 508: return strcopy(classname, maxLen, "weapon_knife_m9_bayonet");
         case 509: return strcopy(classname, maxLen, "weapon_knife_tactical");
-        case 515: return strcopy(classname, maxLen, "weapon_knife_butterfly");
         case 512: return strcopy(classname, maxLen, "weapon_knife_falchion");
-        case 516: return strcopy(classname, maxLen, "weapon_knife_push");
         case 514: return strcopy(classname, maxLen, "weapon_knife_survival_bowie");
+        case 515: return strcopy(classname, maxLen, "weapon_knife_butterfly");   
+        case 516: return strcopy(classname, maxLen, "weapon_knife_push");
+        case 517: return strcopy(classname, maxLen, "weapon_knife_cord");
+        case 518: return strcopy(classname, maxLen, "weapon_knife_canis");
+        case 519: return strcopy(classname, maxLen, "weapon_knife_ursus");
+        case 520: return strcopy(classname, maxLen, "weapon_knife_gypsy_jackknife");
+        case 521: return strcopy(classname, maxLen, "weapon_knife_outdoor");
+        case 522: return strcopy(classname, maxLen, "weapon_knife_stiletto");
+        case 523: return strcopy(classname, maxLen, "weapon_knife_widowmaker");
+        case 525: return strcopy(classname, maxLen, "weapon_knife_skeleton");
     }
     
     return strlen(classname);
@@ -1864,8 +1877,8 @@ stock void RandomString(char[] buffer, int maxLen)
     // terminator
     maxLen--;
 
-    char random[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234556789";
-    int randlen = strlen(random);
+    static char random[64] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234556789";
+    //int randlen = strlen(random);
 
     int n = 0;
     int c = 0;
@@ -1874,12 +1887,12 @@ stock void RandomString(char[] buffer, int maxLen)
     {
         if(random[0] == '\0')
         {
-            c = GetRandomInt(33, 126);
+            c = RandomInt(33, 126);
             buffer[n] = c;
         }
         else
         {
-            c = GetRandomInt(0, randlen);
+            c = RandomInt(0, 62);
             buffer[n] = random[c];
         }
 
@@ -1893,14 +1906,14 @@ stock void RandomStringEx(const char[] random, char[] buffer, int maxLen)
 {
     maxLen--;
     
-    int randlen = strlen(random);
+    int randlen = strlen(random)-1;
 
     int n = 0;
     int c = 0;
 
     while(n < maxLen)
     {
-        c = GetRandomInt(0, randlen);
+        c = RandomInt(0, randlen);
         buffer[n++] = random[c];
     }
 
