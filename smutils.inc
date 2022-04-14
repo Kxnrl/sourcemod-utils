@@ -7,7 +7,7 @@
 /*  Description:   Some helpful functions.                        */
 /*                                                                */
 /*                                                                */
-/*  Copyright (C) 2021  Kyle   https://www.kxnrl.com              */
+/*  Copyright (C) 2022  Kyle   https://www.kxnrl.com              */
 /*                                                                */
 /*  This code is licensed under the GPLv3 License.                */
 /*                                                                */
@@ -20,7 +20,7 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.3"
+#define SMUtils_Version "1.3.1"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://github.com/Kxnrl/sourcemod-utils"
 
@@ -38,7 +38,22 @@
 #define DMG_HEADSHOT (DMG_BUCKSHOT<<1)
 
 #define SMUitls_MaxSpaceLength 1024
-static char g_PlaceHolder[SMUitls_MaxSpaceLength+1];
+
+#define SOUND_CHAR_STREAM         '*'     // as one of 1st 2 chars in name, indicates streaming wav data
+#define SOUND_CHAR_USERVOX        '?'     // as one of 1st 2 chars in name, indicates user realtime voice data
+#define SOUND_CHAR_SENTENCE       '!'     // as one of 1st 2 chars in name, indicates sentence wav
+#define SOUND_CHAR_DRYMIX         '#'     // as one of 1st 2 chars in name, indicates wav bypasses dsp fx
+#define SOUND_CHAR_DOPPLER        '>'     // as one of 1st 2 chars in name, indicates doppler encoded stereo wav: left wav (incomming) and right wav (outgoing).
+#define SOUND_CHAR_DIRECTIONAL    '<'     // as one of 1st 2 chars in name, indicates stereo wav has direction cone: mix left wav (front facing) with right wav (rear facing) based on soundfacing direction
+#define SOUND_CHAR_DISTVARIANT    '^'     // as one of 1st 2 chars in name, indicates distance variant encoded stereo wav (left is close, right is far)
+#define SOUND_CHAR_OMNI           '@'     // as one of 1st 2 chars in name, indicates non-directional wav (default mono or stereo)
+#define SOUND_CHAR_HRTF           '~'     // as one of 1st 2 chars in name, indicates wav should use HRTF spatialization for non-owners.
+#define SOUND_CHAR_RADIO          '+'     // as one of 1st 2 chars in name, indicates a 'radio' sound -- should be played without spatialization
+#define SOUND_CHAR_SPATIALSTEREO  ')'     // as one of 1st 2 chars in name, indicates spatialized stereo wav
+#define SOUND_CHAR_DIRSTEREO      '('     // as one of 1st 2 chars in name, indicates directional stereo wav (like doppler)
+#define SOUND_CHAR_FAST_PITCH     '}'     // as one of 1st 2 chars in name, forces low quality, non-interpolated pitch shift
+#define SOUND_CHAR_SUBTITLED      '$'     // as one of 1st 2 chars in name, indicates the subtitles are forced
+
 
 /**************************
             Global
@@ -371,6 +386,7 @@ static bool SkipNextPrefix = false;
 static bool ReplaceColorEx = false;
 static UserMessageType UMType = UM_Protobuf;
 static EngineVersion GameEngine = Engine_CSGO;
+static char g_PlaceHolder[SMUitls_MaxSpaceLength+1];
 
 stock void SMUtils_InitUserMessage()
 {
@@ -630,7 +646,7 @@ stock void ProcessColorString(char[] message, int maxLen)
         ReplaceString(message, maxLen, "{gray}",        "\x07DCDCDC", false);
         ReplaceString(message, maxLen, "{grey}",        "\x07DCDCDC", false);
         ReplaceString(message, maxLen, "{olive}",       "\x07808000", false);
-        ReplaceString(message, maxLen, "{orange}",      "\x07E4AE39", false);
+        ReplaceString(message, maxLen, "{gold}",        "\x07E4AE39", false);
         ReplaceString(message, maxLen, "{silver}",      "\x07B0C3D9", false);
         ReplaceString(message, maxLen, "{lightblue}",   "\x075E98D9", false);
         ReplaceString(message, maxLen, "{blue}",        "\x074B69FF", false);
@@ -815,7 +831,7 @@ stock void SMUtils_Hint(int client, const char[] msg)
 stock char[] SMUitls_HintAdapter(const char[] message, bool &color)
 {
     char adapter[16];
-    if (StrContains(message, "<font") != -1 || StrContains(message, "<span") != -1)
+    if (StrContains(message, "<font") != -1 || StrContains(message, "<span") != -1 || StrContains(message, "<img") != -1)
     {
         color = true;
         strcopy(adapter, 16, "TextMsg");
@@ -1406,6 +1422,13 @@ stock void EasyMissionHintAll(float holdtime, InstructorHud_Icon icon, int r, in
 /**************************
             Sound
 **************************/
+static char SoundChar = SOUND_CHAR_STREAM;
+
+stock void SMUtils_SetSoundChar(const char c)
+{
+    SoundChar = c;
+}
+
 stock void PrepareSound(const char[] sound)
 {
     static int table_download = INVALID_STRING_TABLE;
@@ -1421,7 +1444,34 @@ stock void PrepareSound(const char[] sound)
     bool prevls;  //Previous lock state.
 
     // precache
-    FormatEx(buffer, 256, "*%s", sound);
+    FormatEx(buffer, 256, "%c%s", SoundChar, sound);
+    prevls = LockStringTables(false);
+    AddToStringTable(table_soundpre, buffer);
+    LockStringTables(prevls);
+    
+    // downloader
+    FormatEx(buffer, 256, "sound/%s", sound);
+    prevls = LockStringTables(false);
+    AddToStringTable(table_download, buffer);
+    LockStringTables(prevls);
+}
+
+stock void PrepareTypedSound(const char[] sound, const char c)
+{
+    static int table_download = INVALID_STRING_TABLE;
+    static int table_soundpre = INVALID_STRING_TABLE;
+
+    if(table_download == INVALID_STRING_TABLE)
+        table_download = FindStringTable("downloadables");
+
+    if(table_soundpre == INVALID_STRING_TABLE)
+        table_soundpre = FindStringTable("soundprecache");
+
+    char buffer[256];
+    bool prevls;  //Previous lock state.
+
+    // precache
+    FormatEx(buffer, 256, "%c%s", c, sound);
     prevls = LockStringTables(false);
     AddToStringTable(table_soundpre, buffer);
     LockStringTables(prevls);
@@ -1436,21 +1486,42 @@ stock void PrepareSound(const char[] sound)
 stock void EmitSoundEx(const int[] clients, int numClients, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
-    FormatEx(sound, 256, "*%s", sample);
+    FormatEx(sound, 256, "%c%s", SoundChar, sample);
+    EmitSound(clients, numClients, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
+}
+
+stock void EmitTypedSoundEx(const int[] clients, int numClients, const char type, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
+{
+    char sound[256];
+    FormatEx(sound, 256, "%c%s", type, sample);
     EmitSound(clients, numClients, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
 stock void EmitSoundOne(int client, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
-    FormatEx(sound, 256, "*%s", sample);
+    FormatEx(sound, 256, "%c%s", SoundChar, sample);
+    EmitSoundToClient(client, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
+}
+
+stock void EmitTypedSoundOne(int client, const char type, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
+{
+    char sound[256];
+    FormatEx(sound, 256, "%c%s", type, sample);
     EmitSoundToClient(client, sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
 stock void EmitSoundAll(const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
 {
     char sound[256];
-    FormatEx(sound, 256, "*%s", sample);
+    FormatEx(sound, 256, "%c%s", SoundChar, sample);
+    EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
+}
+
+stock void EmitTypedSoundAll(const char[] sample, const char type, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
+{
+    char sound[256];
+    FormatEx(sound, 256, "%c%s", type, sample);
     EmitSoundToAll(sound, entity, channel, level, flags, volume, pitch, speakerentity, origin, dir, updatePos, soundtime);
 }
 
