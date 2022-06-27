@@ -20,7 +20,7 @@
 
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.3.1"
+#define SMUtils_Version "1.3.2"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://github.com/Kxnrl/sourcemod-utils"
 
@@ -38,6 +38,28 @@
 #define DMG_HEADSHOT (DMG_BUCKSHOT<<1)
 
 #define SMUitls_MaxSpaceLength 1024
+
+enum /* SoundFlags_t */
+{
+    SoundFlags_NOFLAGS                 = 0,             // to keep the compiler happy
+    SoundFlags_CHANGE_VOL              = (1<<0),        // change sound vol
+    SoundFlags_CHANGE_PITCH            = (1<<1),        // change sound pitch
+    SoundFlags_STOP                    = (1<<2),        // stop the sound
+    SoundFlags_SPAWNING                = (1<<3),        // we're spawning, used in some cases for ambients not sent over net, only a param between dll and server.
+    SoundFlags_DELAY                   = (1<<4),        // sound has an initial delay
+    SoundFlags_STOP_LOOPING            = (1<<5),        // stop all looping sounds on the entity.
+    SoundFlags_SPEAKER                 = (1<<6),        // being played again by a microphone through a speaker
+
+    SoundFlags_SHOULDPAUSE             = (1<<7),        // this sound should be paused if the game is paused
+    SoundFlags_IGNORE_PHONEMES         = (1<<8),
+    SoundFlags_IGNORE_NAME             = (1<<9),        // used to change all sounds emitted by an entity, regardless of scriptname
+    SoundFlags_IS_SCRIPTHANDLE         = (1<<10),       // server has passed the actual SoundEntry instead of wave filename
+
+    SoundFlags_UPDATE_DELAY_FOR_CHOREO = (1<<11),       // True if we have to update snd_delay_for_choreo with the IO latency.
+    SoundFlags_GENERATE_GUID           = (1<<12),       // True if we generate the GUID when we send the sound.
+
+    SoundFlags_OVERRIDE_PITCH          = (1<<13),       // The pitch given in code overrides what is present in the sound entry.
+};
 
 #define SOUND_CHAR_STREAM         '*'     // as one of 1st 2 chars in name, indicates streaming wav data
 #define SOUND_CHAR_USERVOX        '?'     // as one of 1st 2 chars in name, indicates user realtime voice data
@@ -75,16 +97,16 @@ stock int GetKyleIndex()
 **************************/
 stock bool ClientIsValid(int client, bool allowBot = false)
 {
-    if(client > MaxClients || client < MinClients)
+    if (client > MaxClients || client < MinClients)
         return false;
     
-    if(!IsClientConnected(client))
+    if (!IsClientConnected(client))
         return false;
 
-    if(!IsClientInGame(client))
+    if (!IsClientInGame(client))
         return false;
 
-    if(IsClientSourceTV(client) || IsClientReplay(client))
+    if (IsClientSourceTV(client) || IsClientReplay(client))
         return false;
 
     return (!IsFakeClient(client)) || allowBot;
@@ -92,16 +114,16 @@ stock bool ClientIsValid(int client, bool allowBot = false)
 
 stock bool ClientIsAlive(int client, bool allowBot = false)
 {
-    if(client > MaxClients || client < MinClients)
+    if (client > MaxClients || client < MinClients)
         return false;
 
-    if(!IsClientInGame(client))
+    if (!IsClientInGame(client))
         return false;
 
-    if(IsClientSourceTV(client) || IsClientReplay(client))
+    if (IsClientSourceTV(client) || IsClientReplay(client))
         return false;
     
-    if(!allowBot && IsFakeClient(client))
+    if (!allowBot && IsFakeClient(client))
         return false;
 
     return IsPlayerAlive(client);
@@ -110,8 +132,8 @@ stock bool ClientIsAlive(int client, bool allowBot = false)
 stock int FindClientByAccount(int account, bool validate = false)
 {
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
-            if(GetSteamAccountID(client) == account)
+        if (ClientIsValid(client))
+            if (GetSteamAccountID(client) == account)
                 return client;
 
     return -1;
@@ -121,9 +143,9 @@ stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool val
 {
     char steamId[32];
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
-            if(GetClientAuthId(client, authType, steamId, 32, validate))
-                if(strcmp(steamId, authId) == 0)
+        if (ClientIsValid(client))
+            if (GetClientAuthId(client, authType, steamId, 32, validate))
+                if (strcmp(steamId, authId) == 0)
                     return client;
 
     return -1;
@@ -134,14 +156,15 @@ stock int GetRandomClient(bool alive = false, int ignoreFlags = 0)
     int[] clients = new int [MaxClients+1];
     int total;
 
-    clients[total++] = -1;
-
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
-            if(!alive || ClientIsAlive(client))
-                if((ignoreFlags != 0 && HasClientUserFlags(client, ignoreFlags)) || ignoreFlags == 0) 
+        if (ClientIsValid(client))
+            if (!alive || ClientIsAlive(client))
+                if ((ignoreFlags != 0 && HasClientUserFlags(client, ignoreFlags)) || ignoreFlags == 0) 
                     clients[total++] = client;
-    
+
+    if (total == 0)
+        return -1;
+
     return clients[RandomInt(0, total)];
 }
 
@@ -154,16 +177,11 @@ stock bool HasClientUserFlags(int client, int flags)
 stock bool HasClientAdminFlags(int client, AdminFlag flag)
 {
     char steamid[32];
-    
-    //try all steamId type
-    for(int i = 0; i < view_as<int>(AuthIdType); ++i)
-    {
-        GetClientAuthId(client, view_as<AuthIdType>(i), steamid, 32);
-        AdminId admin = FindAdminByIdentity(steamid, AUTHMETHOD_STEAM);
-        if(admin != INVALID_ADMIN_ID)
-            return (admin.HasFlag(flag, Access_Real) || admin.HasFlag(flag, Access_Effective));
-    }
-    
+    GetClientAuthId(client, AuthId_Steam2, steamid, 32);
+    AdminId admin = FindAdminByIdentity(steamid, AUTHMETHOD_STEAM);
+    if (admin != INVALID_ADMIN_ID)
+        return (admin.HasFlag(flag, Access_Real) || admin.HasFlag(flag, Access_Effective));
+
     return false;
 }
 
@@ -177,14 +195,29 @@ stock void SetClientDeaths(int client, int val)
     SetEntProp(client, Prop_Data, "m_iDeaths", val);
 }
 
+stock int GetClientMoney(int client)
+{
+    return GetEntProp(client, Prop_Send, "m_iAccount");
+}
+
 stock void SetClientMoney(int client, int val)
 {
     SetEntProp(client, Prop_Send, "m_iAccount", val);
 }
 
+stock int GetClientKevlar(int client)
+{
+    return GetEntProp(client, Prop_Send, "m_ArmorValue");
+}
+
 stock void SetClientKevlar(int client, int val)
 {
     SetEntProp(client, Prop_Send, "m_ArmorValue", val);
+}
+
+stock bool GetClientHelmet(int client)
+{
+    return !!GetEntProp(client, Prop_Send, "m_bHasHelmet");
 }
 
 stock void SetClientHelmet(int client, bool has)
@@ -230,9 +263,9 @@ stock int GetTeamPlayers(int team, bool alive = false)
 {
     int total = 0;
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsValid(client) && GetClientTeam(team) == team)
+        if (ClientIsValid(client) && GetClientTeam(team) == team)
         {
-            if(alive && !IsPlayerAlive(client))
+            if (alive && !IsPlayerAlive(client))
                 continue;
             
             total++;
@@ -244,12 +277,12 @@ stock int GetPlayers(bool ingame = true, bool alive = false)
 {
     int total = 0;
     for(int client = 1; client <= MaxClients; ++client)
-        if(IsClientConnected(client))
+        if (IsClientConnected(client))
         {
-            if(ingame && !IsClientInGame(client))
+            if (ingame && !IsClientInGame(client))
                 continue;
             
-            if(alive && IsClientInGame(client) && !IsPlayerAlive(client))
+            if (alive && IsClientInGame(client) && !IsPlayerAlive(client))
                 continue;
 
             total++;
@@ -264,16 +297,16 @@ stock int GetPlayersEx(bool alive = false, int &tes, int &cts)
     int total = 0;
     int iTeam = 1;
     for(int client = 1; client <= MaxClients; ++client)
-        if(IsClientInGame(client))
+        if (IsClientInGame(client))
         {
-            if(alive && !IsPlayerAlive(client))
+            if (alive && !IsPlayerAlive(client))
                 continue;
 
             iTeam = GetClientTeam(client);
             
-            if(iTeam == 2)
+            if (iTeam == 2)
                 tes++;
-            else if(iTeam == 3)
+            else if (iTeam == 3)
                 cts++;
 
             total++;
@@ -286,7 +319,7 @@ stock int GetPlayersEx(bool alive = false, int &tes, int &cts)
 **************************/
 stock int ConvertSteam64ToSteam32(const char[] steamId64, char[] steamId32, int maxLen)
 {
-    if(strlen(steamId64) != 17 || StrContains(steamId64, "765611", false) != 0)
+    if (strlen(steamId64) != 17 || StrContains(steamId64, "765611", false) != 0)
     {
         ThrowNativeError(SP_ERROR_PARAM, "ConvertSteam64ToSteam32 -> Invalid steamId64 given. -> %s", steamId64);
         return -1;
@@ -298,7 +331,7 @@ stock int ConvertSteam64ToSteam32(const char[] steamId64, char[] steamId32, int 
 
     strcopy(m_szAuth, 18, steamId64);
 
-    if(CharToNumber(m_szAuth[16]) % 2 == 1)
+    if (CharToNumber(m_szAuth[16]) % 2 == 1)
     {
         m_iSteamId[0] = 1;
         m_szAuth[16] = NumberToChar(CharToNumber(m_szAuth[16]) - 1);
@@ -306,11 +339,11 @@ stock int ConvertSteam64ToSteam32(const char[] steamId64, char[] steamId32, int 
     
     for(int k = 16; k >= 0; k--)
     {
-        if(m_iBorrow > 0)
+        if (m_iBorrow > 0)
         {
             m_iTemp = CharToNumber(m_szAuth[k]) - 1;
 
-            if(m_iTemp >= CharToNumber(m_szBase[k]))
+            if (m_iTemp >= CharToNumber(m_szBase[k]))
             {
                 m_iBorrow = 0;
                 m_szAccount[k] = NumberToChar(m_iTemp - CharToNumber(m_szBase[k]));
@@ -323,7 +356,7 @@ stock int ConvertSteam64ToSteam32(const char[] steamId64, char[] steamId32, int 
         }
         else
         {
-            if(CharToNumber(m_szAuth[k]) >= CharToNumber(m_szBase[k]))
+            if (CharToNumber(m_szAuth[k]) >= CharToNumber(m_szBase[k]))
             {
                 m_iBorrow = 0;
                 m_szAccount[k] = NumberToChar(CharToNumber(m_szAuth[k]) - CharToNumber(m_szBase[k]));
@@ -393,11 +426,11 @@ stock void SMUtils_InitUserMessage()
     UMType = GetUserMessageType();
     GameEngine = GetEngineVersion();
 
-    if(GameEngine == Engine_Insurgency || GameEngine == Engine_Left4Dead2)
+    if (GameEngine == Engine_Insurgency || GameEngine == Engine_Left4Dead2)
     {
         ReplaceColorEx = true;
     }
-    else if(GameEngine == Engine_CSGO)
+    else if (GameEngine == Engine_CSGO)
     {
         ReplaceColorEx = false;
     }
@@ -459,7 +492,7 @@ stock void ChatEx(int[] clients, int numClients, const char[] buffer, any ...)
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
     
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         Protobuf SayText2 = view_as<Protobuf>(StartMessage("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
         SayText2.SetInt("ent_idx", 0);
@@ -491,10 +524,10 @@ stock void ChatTeam(int team, bool spec = true, const char[] buffer, any ...)
     int iTeam = 0;
     
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
             iTeam = GetClientTeam(client);
-            if(iTeam == team || (spec && iTeam == 1))
+            if (iTeam == team || (spec && iTeam == 1))
                 clients[total++] = client;
         }
 
@@ -509,9 +542,9 @@ stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
     int total = 0;
 
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
-            if((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
+            if ((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
                 clients[total++] = client;
         }
         
@@ -527,7 +560,7 @@ stock void ChatAll(const char[] buffer, any ...)
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
 
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         Protobuf SayText2 = view_as<Protobuf>(StartMessageAll("SayText2", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
         SayText2.SetInt("ent_idx", 0);
@@ -569,9 +602,9 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
 {
     char msg[256];
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
-            if((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
+            if ((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
             {
                 SetGlobalTransTarget(client);
                 VFormat(msg, 256, buffer, 4);
@@ -592,10 +625,10 @@ stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
     char msg[256];
 
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
             iTeam = GetClientTeam(client);
-            if(iTeam == team || (spec && iTeam == 1))
+            if (iTeam == team || (spec && iTeam == 1))
             {
                 SetGlobalTransTarget(client);
                 VFormat(msg, 256, buffer, 4);
@@ -614,7 +647,7 @@ stock void tChatAll(const char[] buffer, any ...)
 {
     char msg[256];
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
             SetGlobalTransTarget(client);
             VFormat(msg, 256, buffer, 2);
@@ -630,7 +663,7 @@ stock void tChatAll(const char[] buffer, any ...)
 
 stock void ProcessColorString(char[] message, int maxLen)
 {
-    if(ReplaceColorEx)
+    if (ReplaceColorEx)
     {
         ReplaceString(message, maxLen, "{normal}",      "\x07FFFFFF", false);
         ReplaceString(message, maxLen, "{default}",     "\x07FFFFFF", false);
@@ -722,7 +755,7 @@ stock void RemoveAllColors(char[] message, int maxLen)
 
 stock void SMUtils_SayText2(int client, const char[] msg)
 {
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         Protobuf SayText2 = view_as<Protobuf>(StartMessageOne("SayText2", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
         SayText2.SetInt("ent_idx", 0);
@@ -762,7 +795,7 @@ stock void HintAll(const char[] buffer, any ...)
     char msg[1024];
     VFormat(msg, 1024, buffer, 2);
 
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         bool color = false;
         Protobuf HintText = view_as<Protobuf>(StartMessageAll(SMUitls_HintAdapter(msg, color), USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -782,7 +815,7 @@ stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
     char msg[1024];
     VFormat(msg, 1024, buffer, 3);
 
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         bool color = false;
         Protobuf HintText = view_as<Protobuf>(StartMessage(SMUitls_HintAdapter(msg, color), clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -801,7 +834,7 @@ stock void tHintAll(const char[] buffer, any ...)
 {
     char msg[1024];
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
             SetGlobalTransTarget(client);
             VFormat(msg, 1024, buffer, 2);
@@ -813,7 +846,7 @@ stock void tHintAll(const char[] buffer, any ...)
 
 stock void SMUtils_Hint(int client, const char[] msg)
 {
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         bool color = false;
         Protobuf HintText = view_as<Protobuf>(StartMessageOne(SMUitls_HintAdapter(msg, color), client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -891,7 +924,7 @@ stock void TextAll(const char[] buffer, any ...)
     char msg[2048];
     VFormat(msg, 2048, buffer, 2);
 
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         Protobuf TextMsg = view_as<Protobuf>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
         SMUtils_TextColor(TextMsg, msg);
@@ -915,7 +948,7 @@ stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
     char msg[2048];
     VFormat(msg, 2048, buffer, 3);
 
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         Protobuf TextMsg = view_as<Protobuf>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
         SMUtils_TextColor(TextMsg, msg);
@@ -938,7 +971,7 @@ stock void tTextAll(const char[] buffer, any ...)
 {
     char msg[2048];
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
             SetGlobalTransTarget(client);
             VFormat(msg, 256, buffer, 2);
@@ -951,7 +984,7 @@ stock void tTextAll(const char[] buffer, any ...)
 
 stock void SMUtils_Text(int client, const char[] msg)
 {
-    if(UMType == UM_Protobuf)
+    if (UMType == UM_Protobuf)
     {
         Protobuf TextMsg = view_as<Protobuf>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
         SMUtils_TextColor(TextMsg, msg);
@@ -1118,14 +1151,14 @@ stock void SendHudMessageTeam(int team, int channel, const char[] buffer, any ..
     int iTeam = 0;
     
     for(int client = 1; client <= MaxClients; client++)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
         {
             iTeam = GetClientTeam(client);
-            if(iTeam == team)
+            if (iTeam == team)
                 clients[total++] = client;
         }
 
-    Protobuf HudMsg = view_as<Protobuf>(StartMessage("HudMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+    Protobuf HudMsg = view_as<Protobuf>(StartMessage("HudMsg", clients, total, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
     HudMsg.SetInt("channel", channel);
     HudMsg.SetVector2D("pos", gameText_Pos);
     HudMsg.SetColor("clr1", gameText_Argb);
@@ -1162,7 +1195,8 @@ enum InstructorHud_Icon
     Icon_arrow_up,
     Icon_arrow_right,
     Icon_fire,
-    Icon_present
+    Icon_present,
+    Icon_MaxCount
 };
 
 static char InstructorHud_Icon_String[][] =
@@ -1228,8 +1262,8 @@ methodmap InstructorHud < Event
         {
             char iconname[32];
             this.GetString("hint_icon_onscreen", iconname, 32);
-            for(int i = 0; i < view_as<int>(InstructorHud_Icon); ++i)
-                if(strcmp(iconname, InstructorHud_Icon_String[view_as<InstructorHud_Icon>(i)]) == 0)
+            for(int i = 0; i < view_as<int>(Icon_MaxCount); ++i)
+                if (strcmp(iconname, InstructorHud_Icon_String[view_as<InstructorHud_Icon>(i)]) == 0)
                     return view_as<InstructorHud_Icon>(i);
             return Icon_bulb;
         }
@@ -1241,8 +1275,8 @@ methodmap InstructorHud < Event
         {
             char iconname[32];
             this.GetString("hint_icon_offscreen", iconname, 32);
-            for(int i = 0; i < view_as<int>(InstructorHud_Icon); ++i)
-                if(strcmp(iconname, InstructorHud_Icon_String[view_as<InstructorHud_Icon>(i)]) == 0)
+            for(int i = 0; i < view_as<int>(Icon_MaxCount); ++i)
+                if (strcmp(iconname, InstructorHud_Icon_String[view_as<InstructorHud_Icon>(i)]) == 0)
                     return view_as<InstructorHud_Icon>(i);
             return Icon_bulb;
         }
@@ -1296,7 +1330,7 @@ methodmap InstructorHud < Event
     public InstructorHud(const char[] name = "", int target = 0)
     {
         Event e = CreateEvent("instructor_server_hint_create", true);
-        if(e == null)
+        if (e == null)
             ThrowNativeError(SP_ERROR_NATIVE, "Create instructor_server_hint_create failed -> event is null.");
 
         e.SetBool("hint_local_player_only", true);
@@ -1305,7 +1339,7 @@ methodmap InstructorHud < Event
         e.SetInt("hint_activator_userid", 0);
         e.SetInt("hint_target", target);
 
-        if(name[0] == 0)
+        if (name[0] == 0)
         {
             e.SetString("hint_name", name);
             e.SetString("hint_replace_key", name);
@@ -1377,7 +1411,7 @@ methodmap InstructorHud < Event
     {
         char caption[256];
         for(int client = 1; client <= MaxClients; ++client)
-            if(ClientIsValid(client))
+            if (ClientIsValid(client))
             {
                 SetGlobalTransTarget(client);
                 VFormat(caption, 256, buffer, 2);
@@ -1434,10 +1468,10 @@ stock void PrepareSound(const char[] sound)
     static int table_download = INVALID_STRING_TABLE;
     static int table_soundpre = INVALID_STRING_TABLE;
 
-    if(table_download == INVALID_STRING_TABLE)
+    if (table_download == INVALID_STRING_TABLE)
         table_download = FindStringTable("downloadables");
 
-    if(table_soundpre == INVALID_STRING_TABLE)
+    if (table_soundpre == INVALID_STRING_TABLE)
         table_soundpre = FindStringTable("soundprecache");
 
     char buffer[256];
@@ -1461,10 +1495,10 @@ stock void PrepareTypedSound(const char[] sound, const char c)
     static int table_download = INVALID_STRING_TABLE;
     static int table_soundpre = INVALID_STRING_TABLE;
 
-    if(table_download == INVALID_STRING_TABLE)
+    if (table_download == INVALID_STRING_TABLE)
         table_download = FindStringTable("downloadables");
 
-    if(table_soundpre == INVALID_STRING_TABLE)
+    if (table_soundpre == INVALID_STRING_TABLE)
         table_soundpre = FindStringTable("soundprecache");
 
     char buffer[256];
@@ -1476,6 +1510,33 @@ stock void PrepareTypedSound(const char[] sound, const char c)
     AddToStringTable(table_soundpre, buffer);
     LockStringTables(prevls);
     
+    // downloader
+    FormatEx(buffer, 256, "sound/%s", sound);
+    prevls = LockStringTables(false);
+    AddToStringTable(table_download, buffer);
+    LockStringTables(prevls);
+}
+
+stock void PrepareTypedSound2(const char[] sound, const char[] typed)
+{
+    static int table_download = INVALID_STRING_TABLE;
+    static int table_soundpre = INVALID_STRING_TABLE;
+
+    if (table_download == INVALID_STRING_TABLE)
+        table_download = FindStringTable("downloadables");
+
+    if (table_soundpre == INVALID_STRING_TABLE)
+        table_soundpre = FindStringTable("soundprecache");
+
+    char buffer[256];
+    bool prevls;  //Previous lock state.
+
+    // precache
+    FormatEx(buffer, 256, "%s%s", typed, sound);
+    prevls = LockStringTables(false);
+    AddToStringTable(table_soundpre, buffer);
+    LockStringTables(prevls);
+
     // downloader
     FormatEx(buffer, 256, "sound/%s", sound);
     prevls = LockStringTables(false);
@@ -1529,7 +1590,7 @@ stock int SpawnSpeakerEntity(float fPos[3], float fAgl[3], int source, float rem
 {
     int speaker = CreateEntityByName("info_target");
     
-    if(speaker == -1)
+    if (speaker == -1)
         return -1;
 
     DispatchSpawn(speaker);
@@ -1539,7 +1600,7 @@ stock int SpawnSpeakerEntity(float fPos[3], float fAgl[3], int source, float rem
     SetVariantString("!activator");
     AcceptEntityInput(speaker, "SetParent", source, speaker, 0);
 
-    if(removeDelay > 0.0)
+    if (removeDelay > 0.0)
     {
         char input[128];
         FormatEx(input, 128, "OnUser4 !self:Kill::%.2f:1", removeDelay);
@@ -1556,10 +1617,10 @@ stock int SpawnSpeakerEntity(float fPos[3], float fAgl[3], int source, float rem
 **************************/
 stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int maxLen)
 {
-    if(!GetEdictClassname(weapon, classname, maxLen))
+    if (!GetEdictClassname(weapon, classname, maxLen))
         return -1;
 
-    if(index == -1)
+    if (index == -1)
         index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
 
     switch(index)
@@ -1602,7 +1663,7 @@ stock int GetPlayerWeaponEntity(int client, const char[] weapons)
     for(int offset = 0; offset < m_hMyWeapons; offset++)
     {
         weapon = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", offset);
-        if(weapon > MaxClients)
+        if (weapon > MaxClients)
         {
             char classname[32];
             if (GetWeaponClassname(weapon, -1, classname, 32) > 0)
@@ -1624,14 +1685,14 @@ stock bool RemoveWeaponByClassname(int client, const char[] weapons)
 
 stock bool RemoveWeapon(int client, int weapon)
 {
-    if(!RemovePlayerItem(client, weapon))
+    if (!RemovePlayerItem(client, weapon))
         return false;
 
     int m_hWeaponWorldModel = GetEntPropEnt(weapon, Prop_Send, "m_hWeaponWorldModel");
-    if(IsValidEdict(m_hWeaponWorldModel))
+    if (IsValidEdict(m_hWeaponWorldModel))
         AcceptEntityInput(m_hWeaponWorldModel, "Kill");
 
-    if(weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
+    if (weapon == GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"))
         SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", -1);
 
     AcceptEntityInput(weapon, "Kill");
@@ -1641,7 +1702,7 @@ stock bool RemoveWeapon(int client, int weapon)
 
 stock void SetWeaponClip(int weapon, int ammo)
 {
-    if(!HasEntProp(weapon, Prop_Send, "m_iClip1"))
+    if (!HasEntProp(weapon, Prop_Send, "m_iClip1"))
         ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iClip1 Props.", weapon);
 
     SetEntProp(weapon, Prop_Send, "m_iClip1", ammo, 4, 0);
@@ -1649,7 +1710,7 @@ stock void SetWeaponClip(int weapon, int ammo)
 
 stock void SetWeaponAmmo(int weapon, int ammo)
 {
-    if(!HasEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount"))
+    if (!HasEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount"))
         ThrowNativeError(SP_ERROR_PARAM, "Weapon %d has not m_iPrimaryReserveAmmoCount Props.", weapon);
 
     SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo);
@@ -1658,7 +1719,7 @@ stock void SetWeaponAmmo(int weapon, int ammo)
 stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
 {
     int amtype = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
-    if(amtype == -1)
+    if (amtype == -1)
         ThrowError("Weapon %d -> m_iPrimaryAmmoType is -1.", weapon);
 
     SetEntProp(client, Prop_Send, "m_iAmmo", ammo, _, amtype);
@@ -1667,7 +1728,7 @@ stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
 stock void StripWeapon(int client, bool suit = false)
 {
     int stripper = CreateEntityByName("player_weaponstrip"); 
-    if(stripper == -1)
+    if (stripper == -1)
         ThrowNativeError(SP_ERROR_NATIVE, "Create player_weaponstrip failed.");
     
     AcceptEntityInput(stripper, !suit ? "Strip" : "StripWeaponsAndSuit", client);
@@ -1677,7 +1738,7 @@ stock void StripWeapon(int client, bool suit = false)
 stock void StripWeaponAll()
 {
     int stripper = CreateEntityByName("game_player_equip");
-    if(stripper == -1)
+    if (stripper == -1)
         ThrowNativeError(SP_ERROR_NATIVE, "Create game_player_equip failed.");
 
     DispatchKeyValue(stripper, "spawnflags", "2");
@@ -1688,7 +1749,7 @@ stock void StripWeaponAll()
 
 stock int GetClientActiveWeapon(int client)
 {
-    if(!ClientIsAlive(client))
+    if (!ClientIsAlive(client))
         return -1;
 
     return GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
@@ -1701,7 +1762,7 @@ stock int GetClientActiveWeapon(int client)
 stock void PrepareOverlay(const char[] overlay)
 {
     static int table_download = INVALID_STRING_TABLE;
-    if(table_download == INVALID_STRING_TABLE)
+    if (table_download == INVALID_STRING_TABLE)
         table_download = FindStringTable("downloadables");
     
     bool prev;
@@ -1728,26 +1789,26 @@ stock void Overlay(int client, const char[] overlay, float holdtime = 0.0)
 {
     ClientCommand(client, "r_screenoverlay \"%s.vtf\"", overlay);
 
-    if(holdtime >= 0.0)
+    if (holdtime >= 0.0)
         CreateTimer(holdtime, Timer_RemoveOverlay_smutils_overlay, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 stock void OverlayAll(const char[] overlay, float holdtime = 0.0)
 {
     for(int client = 1; client <= MaxClients; ++client)
-        if(ClientIsValid(client))
+        if (ClientIsValid(client))
             ClientCommand(client, "r_screenoverlay \"%s.vtf\"", overlay);
 
-    if(holdtime >= 0.0)
+    if (holdtime >= 0.0)
         CreateTimer(holdtime, Timer_RemoveOverlay_smutils_overlay, -1, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public Action Timer_RemoveOverlay_smutils_overlay(Handle timer, int userid)
 {
-    if(userid == -1)
+    if (userid == -1)
     {
         for(int client = 1; client <= MaxClients; ++client)
-            if(ClientIsValid(client))
+            if (ClientIsValid(client))
                 ClientCommand(client, "r_screenoverlay \"\"");
             
         return Plugin_Stop;
@@ -1755,7 +1816,7 @@ public Action Timer_RemoveOverlay_smutils_overlay(Handle timer, int userid)
     
     int client = GetClientOfUserId(userid);
 
-    if(ClientIsValid(client))
+    if (ClientIsValid(client))
         ClientCommand(client, "r_screenoverlay \"\"");
 
     return Plugin_Stop;
@@ -1773,12 +1834,12 @@ stock bool SetEntityParent(int child, int parent)
 
 stock bool SetEntityParentEx(int child, int parent, const char[] attchment, const float offset[3] = {0.0, 0.0, 0.0})
 {
-    if(!SetEntityParent(child, parent))
+    if (!SetEntityParent(child, parent))
         return false;
 
     SetVariantString(attchment);
     
-    if(offset[0] == 0.0 && offset[1] == 0.0 && offset[2] == 0.0)
+    if (offset[0] == 0.0 && offset[1] == 0.0 && offset[2] == 0.0)
         return AcceptEntityInput(child, "SetParentAttachment", parent, child);
 
     float fPos[3];
@@ -1791,7 +1852,7 @@ stock bool SetEntityParentEx(int child, int parent, const char[] attchment, cons
 
 stock bool SelfKillEntity(int entity, float delay = 0.1)
 {
-    if(!IsValidEntity(entity))
+    if (!IsValidEntity(entity))
         return true;
 
     char input[128];
@@ -1802,7 +1863,7 @@ stock bool SelfKillEntity(int entity, float delay = 0.1)
 
 stock bool SelfKillEntityEx(int entity, float delay = 0.0)
 {
-    if(!IsValidEntity(entity))
+    if (!IsValidEntity(entity))
         return true;
 
     char input[128];
@@ -1813,10 +1874,10 @@ stock bool SelfKillEntityEx(int entity, float delay = 0.0)
 
 stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
 {
-    if(!IsValidEntity(entity))
+    if (!IsValidEntity(entity))
         return;
 
-    if(delay < 0.0)
+    if (delay < 0.0)
     {
         AcceptEntityInput(entity, "Kill");
         return;
@@ -1827,10 +1888,10 @@ stock void RemoveEntityEx(int entity, float delay = 0.0) // 0.0 = 1 frame delay
 
 stock void RemoveEdictEx(int edict, float delay = 0.0)
 {
-    if(!IsValidEdict(edict))
+    if (!IsValidEdict(edict))
         return;
 
-    if(delay < 0.0)
+    if (delay < 0.0)
     {
         RemoveEdict(edict);
         AcceptEntityInput(edict, "Kill");
@@ -1843,9 +1904,9 @@ stock void RemoveEdictEx(int edict, float delay = 0.0)
 public Action Timer_DestroyEntity_smutils_removeentity(Handle timer, int entRef)
 {
     int entity = EntRefToEntIndex(entRef);
-    if(IsValidEntity(entity))
+    if (IsValidEntity(entity))
     {
-        if(!AcceptEntityInput(entity, "Kill"))
+        if (!AcceptEntityInput(entity, "Kill"))
             LogError("can not kill entity %d", entity);
     }
 
@@ -1855,10 +1916,10 @@ public Action Timer_DestroyEntity_smutils_removeentity(Handle timer, int entRef)
 public Action Timer_DestroyEdict_smutils_removeedice(Handle timer, int edictRef)
 {
     int edict = EntRefToEntIndex(edictRef);
-    if(IsValidEdict(edict))
+    if (IsValidEdict(edict))
     {
         RemoveEdict(edict);
-        if(!AcceptEntityInput(edict, "Kill"))
+        if (!AcceptEntityInput(edict, "Kill"))
             LogError("can not kill edict %d", edict);
     }
 
@@ -1869,20 +1930,20 @@ stock bool SetTextureIndex(int entity, int index, float delay = 0.1)
 {
     char targetname[32];
     GetEntityTargetName(entity, targetname, 32);
-    if(strlen(targetname) < 3)
+    if (strlen(targetname) < 3)
     {
         RandomString(targetname, 32);
         DispatchKeyValue(entity, "targetname", targetname);
     }
     
     int toggle = CreateEntityByName("env_texturetoggle");
-    if(toggle == -1)
+    if (toggle == -1)
         return false;
     
     DispatchKeyValue(toggle, "target", targetname);
     DispatchSpawn(toggle);
     
-    if(!SelfKillEntity(toggle, delay + 0.5))
+    if (!SelfKillEntity(toggle, delay + 0.5))
         return false;
 
     char input[32];
@@ -1912,7 +1973,7 @@ stock int GetEntityParentName(int entity, char[] buffer, int size)
 **************************/
 stock void FreeHandle(Handle &hndl)
 {
-    if(hndl != INVALID_HANDLE)
+    if (hndl != INVALID_HANDLE)
     {
         CloseHandle(hndl);
         hndl = INVALID_HANDLE;
@@ -1921,7 +1982,7 @@ stock void FreeHandle(Handle &hndl)
 
 stock void StopTimer(Handle &timer)
 {
-    if(timer != INVALID_HANDLE)
+    if (timer != INVALID_HANDLE)
     {
         KillTimer(timer);
         timer = INVALID_HANDLE;
@@ -1932,7 +1993,7 @@ stock int RandomInt(int min = 0, int max = 2147483647)
 {
     int random = GetURandomInt();
 
-    if(random == 0)
+    if (random == 0)
         random++;
 
     return RoundToCeil(float(random) / (float(2147483647) / float(max - min + 1))) + min - 1;
@@ -1956,7 +2017,7 @@ stock void RandomString(char[] buffer, int maxLen)
 
     while(n < maxLen)
     {
-        if(random[0] == '\0')
+        if (random[0] == '\0')
         {
             c = RandomInt(33, 126);
             buffer[n] = c;
