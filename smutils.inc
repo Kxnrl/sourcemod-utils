@@ -7,7 +7,7 @@
 /*  Description:   Some helpful functions.                        */
 /*                                                                */
 /*                                                                */
-/*  Copyright (C) 2022  Kyle   https://www.kxnrl.com              */
+/*  Copyright (C) 2023  Kyle   https://www.kxnrl.com              */
 /*                                                                */
 /*  This code is licensed under the GPLv3 License.                */
 /*                                                                */
@@ -18,9 +18,13 @@
     #endinput
 #endif
 
+#if !defined abstract_struct
+    #define abstract_struct enum struct
+#endif
+
 #define __SourceMod_UTILs__
 
-#define SMUtils_Version "1.3.2"
+#define SMUtils_Version "1.3.3"
 #define SMUtils_Author  "Kyle"
 #define SMUtils_URL     "https://github.com/Kxnrl/sourcemod-utils"
 
@@ -36,6 +40,12 @@
 #endif
 
 #define DMG_HEADSHOT (DMG_BUCKSHOT<<1)
+
+#if defined FCVAR_ADMIN_CHANGED_ONLY
+    #undef FCVAR_ADMIN_CHANGED_ONLY
+#endif
+
+#define FCVAR_ADMIN_CHANGED_ONLY (1<<31)
 
 #define SMUitls_MaxSpaceLength 1024
 
@@ -99,7 +109,7 @@ stock bool ClientIsValid(int client, bool allowBot = false)
 {
     if (client > MaxClients || client < MinClients)
         return false;
-    
+
     if (!IsClientConnected(client))
         return false;
 
@@ -122,7 +132,7 @@ stock bool ClientIsAlive(int client, bool allowBot = false)
 
     if (IsClientSourceTV(client) || IsClientReplay(client))
         return false;
-    
+
     if (!allowBot && IsFakeClient(client))
         return false;
 
@@ -153,19 +163,19 @@ stock int FindClientBySteamId(AuthIdType authType, const char[] authId, bool val
 
 stock int GetRandomClient(bool alive = false, int ignoreFlags = 0)
 {
-    int[] clients = new int [MaxClients+1];
+    int clients[MAXPLAYERS+1];
     int total;
 
     for(int client = 1; client <= MaxClients; client++)
         if (ClientIsValid(client))
-            if (!alive || ClientIsAlive(client))
-                if ((ignoreFlags != 0 && HasClientUserFlags(client, ignoreFlags)) || ignoreFlags == 0) 
+            if (!alive || IsPlayerAlive(client))
+                if ((ignoreFlags != 0 && HasClientUserFlags(client, ignoreFlags)) || ignoreFlags == 0)
                     clients[total++] = client;
 
     if (total == 0)
         return -1;
 
-    return clients[RandomInt(0, total)];
+    return clients[RandomInt(0, total-1)];
 }
 
 stock bool HasClientUserFlags(int client, int flags)
@@ -267,7 +277,7 @@ stock int GetTeamPlayers(int team, bool alive = false)
         {
             if (alive && !IsPlayerAlive(client))
                 continue;
-            
+
             total++;
         }
     return total;
@@ -281,7 +291,7 @@ stock int GetPlayers(bool ingame = true, bool alive = false)
         {
             if (ingame && !IsClientInGame(client))
                 continue;
-            
+
             if (alive && IsClientInGame(client) && !IsPlayerAlive(client))
                 continue;
 
@@ -303,7 +313,7 @@ stock int GetPlayersEx(bool alive = false, int &tes, int &cts)
                 continue;
 
             iTeam = GetClientTeam(client);
-            
+
             if (iTeam == 2)
                 tes++;
             else if (iTeam == 3)
@@ -336,7 +346,7 @@ stock int ConvertSteam64ToSteam32(const char[] steamId64, char[] steamId32, int 
         m_iSteamId[0] = 1;
         m_szAuth[16] = NumberToChar(CharToNumber(m_szAuth[16]) - 1);
     }
-    
+
     for(int k = 16; k >= 0; k--)
     {
         if (m_iBorrow > 0)
@@ -491,7 +501,7 @@ stock void ChatEx(int[] clients, int numClients, const char[] buffer, any ...)
     VFormat(msg, 256, buffer, 4);
     Format(msg, 256, "%s%s%s", !SkipNextPrefix ? ChatPrefix : "", ChatSpaces, msg);
     ProcessColorString(msg, 256);
-    
+
     if (UMType == UM_Protobuf)
     {
         Protobuf SayText2 = view_as<Protobuf>(StartMessage("SayText2", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
@@ -517,12 +527,12 @@ stock void ChatEx(int[] clients, int numClients, const char[] buffer, any ...)
     SkipNextPrefix = false;
 }
 
-stock void ChatTeam(int team, bool spec = true, const char[] buffer, any ...)
+stock void ChatTeam(int team, bool spec, const char[] buffer, any ...)
 {
-    int[] clients = new int [MAXPLAYERS+1];
+    int clients[MAXPLAYERS+1];
     int total = 0;
     int iTeam = 0;
-    
+
     for(int client = 1; client <= MaxClients; client++)
         if (ClientIsValid(client))
         {
@@ -538,7 +548,7 @@ stock void ChatTeam(int team, bool spec = true, const char[] buffer, any ...)
 
 stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
 {
-    int[] clients = new int [MAXPLAYERS+1];
+    int clients[MAXPLAYERS+1];
     int total = 0;
 
     for(int client = 1; client <= MaxClients; client++)
@@ -547,7 +557,7 @@ stock void ChatAlive(bool alive, bool spec = true, const char[] buffer, any ...)
             if ((alive == IsPlayerAlive(client)) || (spec && GetClientTeam(client) == 1))
                 clients[total++] = client;
         }
-        
+
     char message[256];
     VFormat(message, 256, buffer, 4);
     ChatEx(clients, total, message);
@@ -613,13 +623,13 @@ stock void tChatAlive(bool alive, bool spec = true, const char[] buffer, any ...
                 SMUtils_SayText2(client, msg);
             }
         }
-    
+
     SkipNextChatCS = false;
     SkipNextPrefix = false;
     SetGlobalTransTarget(LANG_SERVER);
 }
 
-stock void tChatTeam(int team, bool spec = true, const char[] buffer, any ...)
+stock void tChatTeam(int team, bool spec, const char[] buffer, any ...)
 {
     int iTeam = 0;
     char msg[256];
@@ -810,6 +820,38 @@ stock void HintAll(const char[] buffer, any ...)
     }
 }
 
+stock HintTeam(int team, bool spec, const char[] buffer, any ...)
+{
+    char msg[1024];
+    VFormat(msg, 1024, buffer, 3);
+
+    int clients[MAXPLAYERS+1];
+    int total = 0;
+    int iTeam = 0;
+
+    for(int client = 1; client <= MaxClients; client++)
+        if (ClientIsValid(client))
+        {
+            iTeam = GetClientTeam(client);
+            if (iTeam == team || (spec && iTeam == 1))
+                clients[total++] = client;
+        }
+
+    if (UMType == UM_Protobuf)
+    {
+        bool color = false;
+        Protobuf HintText = view_as<Protobuf>(StartMessage(SMUitls_HintAdapter(msg, color), clients, total, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        SMUtils_HintColor(HintText, color, msg);
+        EndMessage();
+    }
+    else
+    {
+        BfWrite HintText = view_as<BfWrite>(StartMessage("HintText", clients, total, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
+        HintText.WriteString(msg);
+        EndMessage();
+    }
+}
+
 stock void HintEx(int[] clients, int numClients, const char[] buffer, any ...)
 {
     char msg[1024];
@@ -933,7 +975,7 @@ stock void TextAll(const char[] buffer, any ...)
     else
     {
         BfWrite TextMsg = view_as<BfWrite>(StartMessageAll("TextMsg", USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        TextMsg.WriteByte(TextMsgDest); 
+        TextMsg.WriteByte(TextMsgDest);
         TextMsg.WriteString(msg);
         TextMsg.WriteString("");
         TextMsg.WriteString("");
@@ -957,7 +999,7 @@ stock void TextEx(int[] clients, int numClients, const char[] buffer, any ...)
     else
     {
         BfWrite TextMsg = view_as<BfWrite>(StartMessage("TextMsg", clients, numClients, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        TextMsg.WriteByte(TextMsgDest); 
+        TextMsg.WriteByte(TextMsgDest);
         TextMsg.WriteString(msg);
         TextMsg.WriteString("");
         TextMsg.WriteString("");
@@ -993,7 +1035,7 @@ stock void SMUtils_Text(int client, const char[] msg)
     else
     {
         BfWrite TextMsg = view_as<BfWrite>(StartMessageOne("TextMsg", client, USERMSG_RELIABLE|USERMSG_BLOCKHOOKS));
-        TextMsg.WriteByte(TextMsgDest); 
+        TextMsg.WriteByte(TextMsgDest);
         TextMsg.WriteString(msg);
         TextMsg.WriteString("");
         TextMsg.WriteString("");
@@ -1015,7 +1057,7 @@ stock void SMUtils_TextColor(Protobuf TextMsg, const char[] message)
     }
     else
     {
-        TextMsg.SetInt("msg_dst", TextMsgDest); 
+        TextMsg.SetInt("msg_dst", TextMsgDest);
         TextMsg.AddString("params", message);
     }
 
@@ -1146,10 +1188,10 @@ stock void SendHudMessageTeam(int team, int channel, const char[] buffer, any ..
     char message[512];
     VFormat(message, 512, buffer, 4);
 
-    int[] clients = new int [MAXPLAYERS+1];
+    int clients[MAXPLAYERS+1];
     int total = 0;
     int iTeam = 0;
-    
+
     for(int client = 1; client <= MaxClients; client++)
         if (ClientIsValid(client))
         {
@@ -1228,12 +1270,12 @@ methodmap InstructorHud < Event
         public get () { return this.GetInt("hint_target", 0); }
         public set (int val) { this.SetInt("hint_target", val); }
     }
-    
+
     property int flags {
         public get () { return this.GetInt("hint_flags", 0); }
         public set (int val) { this.SetInt("hint_flags", val); }
     }
-    
+
     property int activator_userid {
         public get () { return this.GetInt("hint_activator_userid", 0); }
         public set (int val) { this.SetInt("hint_activator_userid", val); }
@@ -1244,20 +1286,20 @@ methodmap InstructorHud < Event
         public get () { return this.GetBool("hint_static", true); }
         public set (bool val) { this.SetBool("hint_static", val); }
     }
-    
+
     // true = end immed on nodraw, false = yes
-    property bool invisible { 
+    property bool invisible {
         public get () { return this.GetBool("hint_allow_nodraw_target", true); }
         public set (bool val) { this.SetBool("hint_allow_nodraw_target", val); }
     }
 
     // true = no, false = show when occluded
-    property bool forcecaption { 
+    property bool forcecaption {
         public get () { return this.GetBool("hint_forcecaption", false); }
         public set (bool val) { this.SetBool("hint_forcecaption", val); }
     }
-    
-    property InstructorHud_Icon icon_onscreen { 
+
+    property InstructorHud_Icon icon_onscreen {
         public get ()
         {
             char iconname[32];
@@ -1269,8 +1311,8 @@ methodmap InstructorHud < Event
         }
         public set (InstructorHud_Icon icon) { this.SetString("hint_icon_onscreen", InstructorHud_Icon_String[icon]); }
     }
-    
-    property InstructorHud_Icon icon_offscreen { 
+
+    property InstructorHud_Icon icon_offscreen {
         public get ()
         {
             char iconname[32];
@@ -1282,44 +1324,44 @@ methodmap InstructorHud < Event
         }
         public set (InstructorHud_Icon icon) { this.SetString("hint_icon_offscreen", InstructorHud_Icon_String[icon]); }
     }
-    
+
     // true = don`t show, false = show;
     property bool show_offscreen {
         public get () { return this.GetBool("hint_nooffscreen", false); }
         public set (bool val) { this.SetBool("hint_nooffscreen", val); }
     }
-    
+
     property float range {
         public get () { return this.GetFloat("hint_range", 1000.0); }
         public set (float val) { this.SetFloat("hint_nooffscreen", val); }
     }
-    
+
     property float timeout {
         public get () { return this.GetFloat("hint_timeout", 1.0); }
         public set (float val) { this.SetFloat("hint_timeout", val); }
     }
-    
+
     property float offset {
         public get () { return this.GetFloat("hint_icon_offset", 0.0); }
         public set (float val) { this.SetFloat("hint_icon_offset", val); }
     }
-    
+
     property int pulseoption {
         public get () { return this.GetInt("hint_pulseoption", 0); }
         public set (int val) { this.SetInt("hint_pulseoption", val); }
     }
-    
+
     property int alphaoption {
         public get () { return this.GetInt("hint_alphaoption", 0); }
         public set (int val) { this.SetInt("hint_alphaoption", val); }
     }
-    
+
     // 0 = no, 1 = Narrow, 2 = Wide
     property int shakeoption {
         public get () { return this.GetInt("hint_shakeoption", 0); }
         public set (int val) { this.SetInt("hint_shakeoption", val); }
     }
-    
+
     public void color(int r, int g, int b)
     {
         char clr[32];
@@ -1354,7 +1396,7 @@ methodmap InstructorHud < Event
 
         return view_as<InstructorHud>(e);
     }
-    
+
     public void EasyInit()
     {
         this.color(57, 197, 187);
@@ -1406,7 +1448,7 @@ methodmap InstructorHud < Event
         this.activator_userid = 0;
         SetGlobalTransTarget(LANG_SERVER);
     }
-    
+
     public void tDisplayAll(const char[] buffer, any ...)
     {
         char caption[256];
@@ -1419,7 +1461,7 @@ methodmap InstructorHud < Event
                 this.SetString("hint_caption", caption);
                 this.SetString("hint_activator_caption", caption);
                 this.FireToClient(client);
-                
+
             }
         this.activator_userid = 0;
         SetGlobalTransTarget(LANG_SERVER);
@@ -1482,7 +1524,7 @@ stock void PrepareSound(const char[] sound)
     prevls = LockStringTables(false);
     AddToStringTable(table_soundpre, buffer);
     LockStringTables(prevls);
-    
+
     // downloader
     FormatEx(buffer, 256, "sound/%s", sound);
     prevls = LockStringTables(false);
@@ -1509,7 +1551,7 @@ stock void PrepareTypedSound(const char[] sound, const char c)
     prevls = LockStringTables(false);
     AddToStringTable(table_soundpre, buffer);
     LockStringTables(prevls);
-    
+
     // downloader
     FormatEx(buffer, 256, "sound/%s", sound);
     prevls = LockStringTables(false);
@@ -1542,6 +1584,13 @@ stock void PrepareTypedSound2(const char[] sound, const char[] typed)
     prevls = LockStringTables(false);
     AddToStringTable(table_download, buffer);
     LockStringTables(prevls);
+}
+
+stock void StopSoundEx(int entity, int channel, const char[] sample)
+{
+    char sound[256];
+    FormatEx(sound, 256, "%c%s", SoundChar, sample);
+    StopSound(entity, channel, sound);
 }
 
 stock void EmitSoundEx(const int[] clients, int numClients, const char[] sample, int entity = SOUND_FROM_PLAYER, int channel = SNDCHAN_AUTO, int level = SNDLEVEL_NORMAL, int flags = SND_NOFLAGS, float volume = SNDVOL_NORMAL, int pitch = SNDPITCH_NORMAL, int speakerentity = -1, const float origin[3] = NULL_VECTOR, const float dir[3] = NULL_VECTOR, bool updatePos = true, float soundtime = 0.0)
@@ -1589,7 +1638,7 @@ stock void EmitTypedSoundAll(const char[] sample, const char type, int entity = 
 stock int SpawnSpeakerEntity(float fPos[3], float fAgl[3], int source, float removeDelay = 0.1)
 {
     int speaker = CreateEntityByName("info_target");
-    
+
     if (speaker == -1)
         return -1;
 
@@ -1625,6 +1674,7 @@ stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int m
 
     switch(index)
     {
+        case 23:  return strcopy(classname, maxLen, "weapon_mp5sd");
         case 41 : return strcopy(classname, maxLen, "weapon_knifegg");
         case 42 : return strcopy(classname, maxLen, "weapon_knife");
         case 59 : return strcopy(classname, maxLen, "weapon_knife_t");
@@ -1641,7 +1691,7 @@ stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int m
         case 509: return strcopy(classname, maxLen, "weapon_knife_tactical");
         case 512: return strcopy(classname, maxLen, "weapon_knife_falchion");
         case 514: return strcopy(classname, maxLen, "weapon_knife_survival_bowie");
-        case 515: return strcopy(classname, maxLen, "weapon_knife_butterfly");   
+        case 515: return strcopy(classname, maxLen, "weapon_knife_butterfly");
         case 516: return strcopy(classname, maxLen, "weapon_knife_push");
         case 517: return strcopy(classname, maxLen, "weapon_knife_cord");
         case 518: return strcopy(classname, maxLen, "weapon_knife_canis");
@@ -1652,7 +1702,7 @@ stock int GetWeaponClassname(int weapon, int index = -1, char[] classname, int m
         case 523: return strcopy(classname, maxLen, "weapon_knife_widowmaker");
         case 525: return strcopy(classname, maxLen, "weapon_knife_skeleton");
     }
-    
+
     return strlen(classname);
 }
 
@@ -1727,10 +1777,10 @@ stock void SetWeaponAmmoEx(int client, int weapon, int ammo)
 
 stock void StripWeapon(int client, bool suit = false)
 {
-    int stripper = CreateEntityByName("player_weaponstrip"); 
+    int stripper = CreateEntityByName("player_weaponstrip");
     if (stripper == -1)
         ThrowNativeError(SP_ERROR_NATIVE, "Create player_weaponstrip failed.");
-    
+
     AcceptEntityInput(stripper, !suit ? "Strip" : "StripWeaponsAndSuit", client);
     AcceptEntityInput(stripper, "Kill");
 }
@@ -1764,13 +1814,13 @@ stock void PrepareOverlay(const char[] overlay)
     static int table_download = INVALID_STRING_TABLE;
     if (table_download == INVALID_STRING_TABLE)
         table_download = FindStringTable("downloadables");
-    
+
     bool prev;
     char path[256];
-    
+
     FormatEx(path, 256, "%s.vmt", overlay);
     PrecacheDecal(path, true);
-    
+
     FormatEx(path, 256, "materials/%s.vmt", overlay);
     prev = LockStringTables(false);
     AddToStringTable(table_download, path);
@@ -1810,10 +1860,10 @@ public Action Timer_RemoveOverlay_smutils_overlay(Handle timer, int userid)
         for(int client = 1; client <= MaxClients; ++client)
             if (ClientIsValid(client))
                 ClientCommand(client, "r_screenoverlay \"\"");
-            
+
         return Plugin_Stop;
     }
-    
+
     int client = GetClientOfUserId(userid);
 
     if (ClientIsValid(client))
@@ -1838,7 +1888,7 @@ stock bool SetEntityParentEx(int child, int parent, const char[] attchment, cons
         return false;
 
     SetVariantString(attchment);
-    
+
     if (offset[0] == 0.0 && offset[1] == 0.0 && offset[2] == 0.0)
         return AcceptEntityInput(child, "SetParentAttachment", parent, child);
 
@@ -1935,14 +1985,14 @@ stock bool SetTextureIndex(int entity, int index, float delay = 0.1)
         RandomString(targetname, 32);
         DispatchKeyValue(entity, "targetname", targetname);
     }
-    
+
     int toggle = CreateEntityByName("env_texturetoggle");
     if (toggle == -1)
         return false;
-    
+
     DispatchKeyValue(toggle, "target", targetname);
     DispatchSpawn(toggle);
-    
+
     if (!SelfKillEntity(toggle, delay + 0.5))
         return false;
 
@@ -2037,7 +2087,7 @@ stock void RandomString(char[] buffer, int maxLen)
 stock void RandomStringEx(const char[] random, char[] buffer, int maxLen)
 {
     maxLen--;
-    
+
     int randlen = strlen(random)-1;
 
     int n = 0;
